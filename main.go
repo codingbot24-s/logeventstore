@@ -15,7 +15,6 @@ func openFileAndWrite(str string,fileName string) {
 	if err != nil {
 		log.Fatal("error opening file ", fileName, err)
 	}
-	// file ke shuru se current offset se likhna shuru karo
 	if err != nil {
 		log.Fatal("error getting offset of file ", fileName, err)
 	}
