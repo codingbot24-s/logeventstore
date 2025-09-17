@@ -7,30 +7,24 @@ import (
 	"os"
 )
 
-func setOFFSet(n byte, msgLen int) (int, int) {
-	store := make([]int, 1024)
-	store[0] = int(n)
-	store[1] = msgLen
 
-	return store[0], store[1]
-}
 
-func openFileAndWrite(fileName string) (int, int) {
+func openFileAndWrite(str string,fileName string) {
 
-	f, err := os.OpenFile(fileName, os.O_WRONLY, os.ModeAppend)
+	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)	
 	if err != nil {
 		log.Fatal("error opening file ", fileName, err)
 	}
-	currentEndOfSet := 0
-
-	n, err := f.Write([]byte("HelloWorld"))
+	// file ke shuru se current offset se likhna shuru karo
 	if err != nil {
-		log.Println("Error in writing file", err)
+		log.Fatal("error getting offset of file ", fileName, err)
 	}
-	currentEndOfSet += n
-	offset, len := setOFFSet(byte(currentEndOfSet), n)
-	defer f.Close()
-	return offset, len
+
+	_ ,err = f.Write([]byte(str))
+	if err != nil {
+		log.Fatal("error opening file ", fileName, err)
+	}
+	fmt.Println("Writing successfull")
 }
 
 func readFileFromoffset(fileName string, offset int) {
@@ -39,9 +33,9 @@ func readFileFromoffset(fileName string, offset int) {
 	if err != nil {
 		log.Fatal("error opening file ", fileName, err)
 	}
-	buf := make([]byte,1024)
+	buf := make([]byte, 1024)
 	n, err := f.ReadAt(buf, int64(offset))
-	if err != nil && err != io.EOF { 
+	if err != nil && err != io.EOF {
 		log.Println("Error from reading in offset", err.Error())
 		return
 	}
@@ -51,8 +45,7 @@ func readFileFromoffset(fileName string, offset int) {
 }
 
 func main() {
-	fileName := "t.txt"
-	ofset, len := openFileAndWrite(fileName)
-	fmt.Printf("ofset is %d, and len is also %d\n", ofset, len)
-	readFileFromoffset("t.txt", 2)
+	file := "log.txt"
+	openFileAndWrite("Hello4 ", file)
+
 }
