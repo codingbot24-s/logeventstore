@@ -6,45 +6,62 @@ import (
 	"log"
 	"os"
 )
-
-
-
-func openFileAndWrite(str string,fileName string) {
-
-	f, err := os.OpenFile(fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)	
-	if err != nil {
-		log.Fatal("error opening file ", fileName, err)
-	}
-	if err != nil {
-		log.Fatal("error getting offset of file ", fileName, err)
-	}
-
-	_ ,err = f.Write([]byte(str))
-	if err != nil {
-		log.Fatal("error opening file ", fileName, err)
-	}
-	fmt.Println("Writing successfull")
+// represent 1partition
+type Log_file struct {
+	fileName string
+	file   *os.File
+	offset int
 }
 
-func readFileFromoffset(fileName string, offset int) {
+func New_file(fname string) *Log_file{
+	l := Log_file{
+		fileName: fname,
+	} 	
+	return &l
+}
 
-	f, err := os.OpenFile(fileName, os.O_RDWR, 0644)
+func(l* Log_file) write_into_file(str string) {
+	var err error
+	l.file, err = os.OpenFile(l.fileName, os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0644)
 	if err != nil {
-		log.Fatal("error opening file ", fileName, err)
+		log.Fatal("error opening file ", l.fileName, err)
 	}
+	n, err := l.file.Write([]byte(str))
+	if err !=  nil {
+		log.Fatal("error opening file ", l.fileName, err)
+	}
+	l.offset = l.offset + n
+	fmt.Println("Writing successfull")
+	defer l.file.Close()
+}
+
+func(l *Log_file) readFileFromoffset(fileName string, offset int) {
+	// check is file open 
+	
 	buf := make([]byte, 1024)
-	n, err := f.ReadAt(buf, int64(offset))
+	n, err := l.file.ReadAt(buf, int64(offset))
 	if err != nil && err != io.EOF {
 		log.Println("Error from reading in offset", err.Error())
 		return
 	}
 	fmt.Printf("Read :%s\n", string(buf[:n]))
 
-	defer f.Close()
+	defer l.file.Close()
+}
+
+// repsresent the multiple partitions
+type Topic struct {
+	partitions []*Log_file
+}
+
+func (t *Topic) get_partition(key string) int {
+	// TODO: consistent hashing
+	// round robin
+	counter := 0
+	counter++
+	p := counter * len(t.partitions)
+	return p
 }
 
 func main() {
-	file := "log.txt"
-	openFileAndWrite("Hello4 ", file)
-
 }
