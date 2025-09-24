@@ -122,7 +122,7 @@ func (l *LogFile) Close() error {
 	return nil
 }
 
-// TODO: expose the api for writing errror in reading
+// TODO: expose the api for writing
 func main() {
 	t, err := NewTopic("logs", 1)
 	if err != nil {
