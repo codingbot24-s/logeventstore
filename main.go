@@ -6,6 +6,8 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.com/gin-gonic/gin"
 )
 
 // represent 1partition
@@ -124,23 +126,12 @@ func (l *LogFile) Close() error {
 
 // TODO: expose the api for writing
 func main() {
-	t, err := NewTopic("logs", 1)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer t.CloseP()
-
-	key := "user-123"
-	err = t.writeIntoPartition(key, "user logged in\n")
-	if err != nil {
-		log.Printf("error writing to the partition: %v", err)
-	}
-
-	str, err := t.readFromPartiton(key, 2)
-	if err != nil {
-		log.Printf("error in reading: %v", err)
-	}
-
-	fmt.Println("Read message:", str)
+	r := gin.Default()
+	r.GET("/",func(ctx *gin.Context) {
+		ctx.JSON(200,gin.H{
+			"message": "Hello",
+		})
+	})
+	fmt.Println("server started on :8080")
+	r.Run()
 }
