@@ -133,7 +133,7 @@ type produceReq struct {
 type consumeReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 	Key       string `json:"key" binding:"required"`
-	Offset    int    `json:"offset" binding:"min=0"` // Changed to min=0 instead of required
+	Offset    int    `json:"offset" binding:"min=0"` 
 }
 
 // we can create a topic map which will store all the topcis and we can use it to read from the topic
@@ -150,7 +150,7 @@ func Produce(c *gin.Context) {
 		return
 	}
 	// create a topic
-	topic, err := NewTopic(req.TopicName, 3)
+	topic, err := NewTopic(req.TopicName, 2)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to create topic",
@@ -159,8 +159,6 @@ func Produce(c *gin.Context) {
 		return
 	}
 	topicMap[req.TopicName] = topic
-
-	defer topic.CloseP()
 
 	// Write message to partition
 	if err := topic.writeIntoPartition(req.Key, req.Message); err != nil {
@@ -211,5 +209,14 @@ func Consume(c *gin.Context) {
 
 	c.JSON(http.StatusOK, gin.H{
 		"message": str,
+		"details": "message has been read closing the files",
+		
 	})
+	// this will close the log file after writing so there is no file to read from
+	for _, t := range topicMap {
+		err := t.CloseP()	
+		if err != nil {
+			fmt.Printf("Error closing topic: %v\n", err)
+		}
+	}	
 }
