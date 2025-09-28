@@ -212,7 +212,8 @@ func Consume(c *gin.Context) {
 		"details": "message has been read closing the files",
 		
 	})
-	// this will close the log file after writing so there is no file to read from
+	//TODO: this will close the all the log file of all topic after reading from single topic this is the problem we need to solve this
+	// 
 	for _, t := range topicMap {
 		err := t.CloseP()	
 		if err != nil {
