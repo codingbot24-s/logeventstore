@@ -212,8 +212,7 @@ func Consume(c *gin.Context) {
 		"details": "message has been read closing the files",
 		
 	})
-	//TODO: this will close the all the log file of all topic after reading from single topic this is the problem we need to solve this
-	// 
+	//TODO: this will close the all the log file of all topic after reading from single topic this is the problem we need to solve this only close the one file not all file
 	for _, t := range topicMap {
 		err := t.CloseP()	
 		if err != nil {
