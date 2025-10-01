@@ -7,9 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// represent 1partition
 
-// TODO: expose the api for writing
 func main() {
 	r := gin.Default()
 	r.POST("/produce", handlers.Produce)

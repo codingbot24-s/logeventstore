@@ -7,7 +7,7 @@ import (
 	"log"
 	"os"
 )
-
+// represent one partition
 type LogFile struct {
 	fileName string
 	file     *os.File
@@ -28,8 +28,13 @@ func NewLogFile(fname string) (*LogFile, error) {
 	}, nil
 }
 
+type Node struct {
+	Hash 	int
+		
+}
 type Topic struct {
 	partitions []*LogFile
+	ring 	 []Node
 }
 
 // create a new topics with given partitions
@@ -105,7 +110,7 @@ func (l *LogFile) ReadFileFromOffset(offset int) (string, error) {
 	}
 	return string(buf[:n]), nil
 }
-
+// get the partition number
 func (t *Topic) Get_partition(key string) int {
 	hash := fnv.New32a()
 	hash.Write([]byte(key))
@@ -119,5 +124,11 @@ func (l *LogFile) Close() error {
 	}
 	return nil
 }
+// TODO: implement consistent hashing for partition
 
 
+
+	
+
+
+	
