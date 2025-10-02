@@ -2,11 +2,13 @@ package helper
 
 import (
 	"fmt"
-	"hash/fnv"
+	"hash/crc32"
 	"io"
 	"log"
 	"os"
+	"sort"
 )
+
 // represent one partition
 type LogFile struct {
 	fileName string
@@ -28,13 +30,36 @@ func NewLogFile(fname string) (*LogFile, error) {
 	}, nil
 }
 
+// we can craete a hash when we are creating the partition
 type Node struct {
-	Hash 	int
-		
+	Hash           int
+	PartitionIndex int
 }
 type Topic struct {
 	partitions []*LogFile
-	ring 	 []Node
+	Ring       []Node
+}
+
+// TODO: impl this while creating topics
+// building ring with vnode and hash
+func (t *Topic) BuildRing(vNode int) {
+	for p := 0; p < len(t.partitions); p++ {
+		for v := range vNode {
+			str := fmt.Sprintf("partition-%d-node-%d", p, v)
+			hashVal := crc32.ChecksumIEEE([]byte(str))
+
+			n := Node{
+				Hash:           int(hashVal),
+				PartitionIndex: p,
+			}
+			t.Ring = append(t.Ring, n)
+		}
+
+	}
+
+	sort.Slice(t.Ring, func(i, j int) bool {
+		return t.Ring[i].Hash < t.Ring[j].Hash
+	})
 }
 
 // create a new topics with given partitions
@@ -110,11 +135,31 @@ func (l *LogFile) ReadFileFromOffset(offset int) (string, error) {
 	}
 	return string(buf[:n]), nil
 }
+
 // get the partition number
 func (t *Topic) Get_partition(key string) int {
-	hash := fnv.New32a()
-	hash.Write([]byte(key))
-	return int(hash.Sum32()) % len(t.partitions)
+	hash := crc32.ChecksumIEEE([]byte(key))
+	// find the hash in the ring == this hash or > hash
+	// with binary search
+	low := 0
+	high := len(t.Ring) - 1
+	for low <= high {
+
+		mid := low + (high-low)/2
+
+		if t.Ring[mid].Hash == int(hash) {
+			return t.Ring[mid].PartitionIndex
+		} else if t.Ring[mid].Hash > int(hash) {
+			high = mid - 1
+		} else {
+			low = mid + 1
+		}
+	}
+	if low < len(t.Ring) {
+		return t.Ring[low].PartitionIndex
+	}
+	// first entry of ring
+	return t.Ring[0].PartitionIndex
 }
 
 // close one log file
@@ -124,11 +169,5 @@ func (l *LogFile) Close() error {
 	}
 	return nil
 }
+
 // TODO: implement consistent hashing for partition
-
-
-
-	
-
-
-	
