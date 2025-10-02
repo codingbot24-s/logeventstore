@@ -96,6 +96,10 @@ func (t *Topic) ReadFromPartiton(key string, offset int) (string, error) {
 
 // close all partitions
 
+func (t *Topic) GetPartitions() []*LogFile {
+	return t.partitions
+}
+
 func (t *Topic) CloseP() error {
 	var Eerr error
 	for _, p := range t.partitions {
@@ -168,3 +172,5 @@ func (l *LogFile) Close() error {
 	}
 	return nil
 }
+
+// TODO: impl add and remove partition then update the ring move affected keys and message to new partition and verify rebalancing 	

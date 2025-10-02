@@ -10,6 +10,7 @@ import (
 type produceReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 	Key       string `json:"key" binding:"required"`
+	NumberofPartitions int `json:"Npartitions" binding:"min=1"`
 	Message   string `json:"message" binding:"required"`
 }
 
@@ -31,8 +32,8 @@ func Produce(c *gin.Context) {
 		})
 		return
 	}
-	// create a topic
-	topic,err := helper.NewTopic(req.TopicName, 2)
+	// creating a topic with hard coded partitions
+	topic,err := helper.NewTopic(req.TopicName, req.NumberofPartitions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to create topic",
@@ -41,6 +42,7 @@ func Produce(c *gin.Context) {
 		return
 	}
 	topicMap[req.TopicName] = topic
+	// TODO: make this hard coded dynamic
 	topic.BuildRing(3)
 	// Write message to partition  
 	if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
@@ -100,4 +102,31 @@ func Consume(c *gin.Context) {
 	// 		fmt.Printf("Error closing topic: %v\n", err)
 	// 	}
 	// }
+}
+
+type createTopicReq struct {
+	TopicName string `json:"topicname" binding:"required"`
+}
+
+
+func CreatePartitionInTopic(c *gin.Context) {
+	// var req createTopicReq
+	// if err := c.ShouldBindJSON(&req); err != nil {
+	// 	fmt.Printf("Error binding JSON: %v\n", err)
+	// 	c.JSON(http.StatusBadRequest, gin.H{
+	// 		"error":   "Invalid request format",
+	// 		"details": err.Error(),
+	// 	})
+	// 	return
+	// }
+	// existingTopic, ok := topicMap[req.TopicName]
+	// if !ok {
+	// 	c.JSON(http.StatusBadRequest, gin.H{
+	// 		"error":   "Invalid topic name",
+	// 		"details": "Topic does not exist",
+	// 	})
+	// 	return
+	// }
+	// get all the logFiles with given topic name
+	// pts := existingTopic.GetPartitions()
 }
