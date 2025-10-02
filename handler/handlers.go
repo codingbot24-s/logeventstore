@@ -41,7 +41,7 @@ func Produce(c *gin.Context) {
 		return
 	}
 	topicMap[req.TopicName] = topic
-
+	topic.BuildRing(3)
 	// Write message to partition  
 	if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{

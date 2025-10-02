@@ -40,8 +40,7 @@ type Topic struct {
 	Ring       []Node
 }
 
-// TODO: impl this while creating topics
-// building ring with vnode and hash
+// building ring with Nvnode append it to the ring with hash
 func (t *Topic) BuildRing(vNode int) {
 	for p := 0; p < len(t.partitions); p++ {
 		for v := range vNode {
@@ -56,7 +55,7 @@ func (t *Topic) BuildRing(vNode int) {
 		}
 
 	}
-
+	// sort the ring slice in < > 
 	sort.Slice(t.Ring, func(i, j int) bool {
 		return t.Ring[i].Hash < t.Ring[j].Hash
 	})
@@ -169,5 +168,3 @@ func (l *LogFile) Close() error {
 	}
 	return nil
 }
-
-// TODO: implement consistent hashing for partition
