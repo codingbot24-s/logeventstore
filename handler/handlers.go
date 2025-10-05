@@ -45,7 +45,7 @@ func Produce(c *gin.Context) {
 		return
 	}
 	topicMap[req.TopicName] = topic
-	// TODO: make this hard coded dynamic
+	// TODO: make this hard coded vnode dynamic 
 	topic.BuildRing(3)
 	// Write message to partition  
 	if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
@@ -144,6 +144,9 @@ func CreatePartitionInTopic(c *gin.Context) {
 	}
 	// append new part into the currentparts
 	*pts = append(*pts, newPart)
+
+	existingTopic.BuildRing(3)
+	fmt.Println("Ring is ", existingTopic.Ring)
 	c.JSON(http.StatusOK,gin.H{
 		"messsage" : "partition created successfully",
 		"partitions": pts,

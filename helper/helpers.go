@@ -174,3 +174,5 @@ func (l *LogFile) Close() error {
 
 // TODO: impl add and remove partition then update the ring move affected keys and message to new partition and verify rebalancing 	
 
+// add partition to the topic done 
+// remove partition from the topic remaining
