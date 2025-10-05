@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"fmt"
+	"log"
 	"net/http"
 
 	"github.com/codingbot24-s/helper"
@@ -104,29 +105,44 @@ func Consume(c *gin.Context) {
 	// }
 }
 
-type createTopicReq struct {
+type createPartitionReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 }
-
-
+// create a partition in a topic
 func CreatePartitionInTopic(c *gin.Context) {
-	// var req createTopicReq
-	// if err := c.ShouldBindJSON(&req); err != nil {
-	// 	fmt.Printf("Error binding JSON: %v\n", err)
-	// 	c.JSON(http.StatusBadRequest, gin.H{
-	// 		"error":   "Invalid request format",
-	// 		"details": err.Error(),
-	// 	})
-	// 	return
-	// }
-	// existingTopic, ok := topicMap[req.TopicName]
-	// if !ok {
-	// 	c.JSON(http.StatusBadRequest, gin.H{
-	// 		"error":   "Invalid topic name",
-	// 		"details": "Topic does not exist",
-	// 	})
-	// 	return
-	// }
+	var req createPartitionReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("Error binding JSON: %v\n", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+	existingTopic, ok := topicMap[req.TopicName]
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid topic name",
+			"details": "Topic does not exist",
+		})
+		return
+	}
 	// get all the logFiles with given topic name
-	// pts := existingTopic.GetPartitions()
+	pts := existingTopic.GetPartitions()
+	// new log file name
+	filename := fmt.Sprintf("%s-partition-%d.log", req.TopicName, len(pts))
+	// create anew logfile
+	newPart,err := helper.NewLogFile(filename)
+	if err != nil {
+		log.Fatalf("error creating new partition %s",err.Error())	
+		return
+	}
+	// append new part into the currentparts
+	pts = append(pts, newPart)
+
+	c.JSON(http.StatusOK,gin.H{
+		"messsage" : "partition created successfully",
+		"partitions": pts,
+	})	
+	
 }

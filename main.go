@@ -11,6 +11,7 @@ func main() {
 	r := gin.Default()
 	r.POST("/produce", handlers.Produce)
 	r.POST("/consume", handlers.Consume)
+	r.POST("/createpartition", handlers.CreatePartitionInTopic)
 	fmt.Println("server started on :8080")
 	r.Run()
 }
