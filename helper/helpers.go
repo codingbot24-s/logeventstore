@@ -11,7 +11,7 @@ import (
 
 // represent one partition
 type LogFile struct {
-	fileName string
+	FileName string
 	file     *os.File
 	offset   int
 }
@@ -24,7 +24,7 @@ func NewLogFile(fname string) (*LogFile, error) {
 	}
 
 	return &LogFile{
-		fileName: fname,
+		FileName: fname,
 		file:     file,
 		offset:   0,
 	}, nil
@@ -94,10 +94,9 @@ func (t *Topic) ReadFromPartiton(key string, offset int) (string, error) {
 	return t.partitions[part].ReadFileFromOffset(offset)
 }
 
-// close all partitions
 
-func (t *Topic) GetPartitions() []*LogFile {
-	return t.partitions
+func (t *Topic) GetPartitions() *[]*LogFile {
+	return &t.partitions
 }
 
 func (t *Topic) CloseP() error {
@@ -118,10 +117,10 @@ func (l *LogFile) WriteIntoLogFile(str string) error {
 	}
 	n, err := l.file.Write([]byte(str))
 	if err != nil {
-		log.Fatal("error writing in logfile", l.fileName, err)
+		log.Fatal("error writing in logfile", l.FileName, err)
 	}
 	l.offset = l.offset + n
-	fmt.Printf("Writing successfull in %s\n", l.fileName)
+	fmt.Printf("Writing successfull in %s\n", l.FileName)
 	return nil
 }
 
@@ -174,3 +173,4 @@ func (l *LogFile) Close() error {
 }
 
 // TODO: impl add and remove partition then update the ring move affected keys and message to new partition and verify rebalancing 	
+
