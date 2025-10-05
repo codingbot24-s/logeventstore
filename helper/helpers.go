@@ -43,7 +43,7 @@ type Topic struct {
 // building ring with Nvnode append it to the ring with hash
 func (t *Topic) BuildRing(vNode int) {
 	for p := 0; p < len(t.partitions); p++ {
-		for v := range vNode {
+		for v := 0; v < vNode; v++ {
 			str := fmt.Sprintf("partition-%d-node-%d", p, v)
 			hashVal := crc32.ChecksumIEEE([]byte(str))
 
