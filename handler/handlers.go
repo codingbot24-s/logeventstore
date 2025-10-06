@@ -20,7 +20,6 @@ type produceReq struct {
 type consumeReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 	Key       string `json:"key" binding:"required"`
-	Offset    int    `json:"offset" binding:"min=0"`
 }
 // we can create a topic map which will store all the topcis and we can use it to read from the topic
 // create a map to store all the topics
@@ -85,7 +84,7 @@ func Consume(c *gin.Context) {
 		})
 		return
 	}
-	str, err := t.ReadFromPartiton(req.Key, req.Offset)
+	str, err := t.ReadFromPartiton(req.Key)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to read from log file",

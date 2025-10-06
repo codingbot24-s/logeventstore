@@ -13,7 +13,13 @@ import (
 type LogFile struct {
 	FileName string
 	file     *os.File
-	offset   int
+}
+
+// every message will have its offset and Hash 
+type Message struct {
+	Offset int
+	Hash int
+	Message string
 }
 
 // create a new logfile return the * of struct
@@ -26,7 +32,6 @@ func NewLogFile(fname string) (*LogFile, error) {
 	return &LogFile{
 		FileName: fname,
 		file:     file,
-		offset:   0,
 	}, nil
 }
 
@@ -89,9 +94,9 @@ func (t *Topic) WriteIntoPartition(key string, message string) error {
 
 // read from correct part
 
-func (t *Topic) ReadFromPartiton(key string, offset int) (string, error) {
+func (t *Topic) ReadFromPartiton(key string) (string, error) {
 	part := t.Get_partition(key)
-	return t.partitions[part].ReadFileFromOffset(offset)
+	return t.partitions[part].ReadFileFromOffset()
 }
 
 
@@ -110,6 +115,8 @@ func (t *Topic) CloseP() error {
 	return Eerr
 }
 
+var index = make([]*Message, 0,2)
+
 // logfile write
 func (l *LogFile) WriteIntoLogFile(str string) error {
 	if l.file == nil {
@@ -117,22 +124,34 @@ func (l *LogFile) WriteIntoLogFile(str string) error {
 	}
 	// write with new line for each message
 	newStr := fmt.Sprintf("%d| %s", len(str),str)
-	n, err := l.file.Write([]byte(newStr + "\n"))
+	_, err := l.file.Write([]byte(newStr + "\n"))
 	if err != nil {
 		log.Fatal("error writing in logfile", l.FileName, err)
 	}
-	l.offset = l.offset + n
-	fmt.Printf("Writing successfull in %s\n", l.FileName)
+	h := crc32.ChecksumIEEE([]byte(str))
+	offset,err := l.file.Seek(0, io.SeekCurrent)
+	if err != nil {
+		log.Fatal("error getting offset", l.FileName, err)
+	}
+	m := Message{
+		Offset: int(offset),
+		Hash: int(h),
+		Message: str,
+	}
+	index = append(index, &m)
+	for i := 0; i < len(index); i++ {
+		fmt.Printf("Hash %d, Offset %d\n", index[i].Hash, index[i].Offset)	
+	}	
 	return nil
 }
 
 // log file read
-func (l *LogFile) ReadFileFromOffset(offset int) (string, error) {
+func (l *LogFile) ReadFileFromOffset() (string, error) {
 	if l.file == nil {
 		return "", fmt.Errorf("log file is not initialized")
 	}
 	buf := make([]byte, 1024)
-	n, err := l.file.ReadAt(buf, int64(offset))
+	n, err := l.file.Read(buf)
 	if err != nil && err != io.EOF {
 		log.Println("Error from reading in offset", err.Error())
 		return "", fmt.Errorf("failed to read from log file: %w", err)
