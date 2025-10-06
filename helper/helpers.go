@@ -115,7 +115,9 @@ func (l *LogFile) WriteIntoLogFile(str string) error {
 	if l.file == nil {
 		return fmt.Errorf("log file is not initialized")
 	}
-	n, err := l.file.Write([]byte(str))
+	// write with new line for each message
+	newStr := fmt.Sprintf("%d| %s", len(str),str)
+	n, err := l.file.Write([]byte(newStr + "\n"))
 	if err != nil {
 		log.Fatal("error writing in logfile", l.FileName, err)
 	}
