@@ -135,7 +135,6 @@ func CreatePartitionInTopic(c *gin.Context) {
 	pts := existingTopic.GetPartitions()
 	
 	filename := fmt.Sprintf("%s-partition-%d.log", req.TopicName, len(*pts))
-	fmt.Println("FILE NAME IS    ", filename)
 	newPart,err := helper.NewLogFile(filename)
 	if err != nil {
 		log.Fatalf("error creating new partition %s",err.Error())	
@@ -151,4 +150,42 @@ func CreatePartitionInTopic(c *gin.Context) {
 		"partitions": pts,
 	})	
 	
+}
+
+type removePartitionReq struct {
+	TopicName string `json:"topicname" binding:"required"`
+}
+
+func RemovePartition(c *gin.Context) {
+	var req removePartitionReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		fmt.Printf("Error binding JSON: %v\n", err)
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+	existingTopic, ok := topicMap[req.TopicName]
+	
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid topic name",
+			"details": "Topic does not exist",
+		})
+		return
+	}
+
+	pts := existingTopic.GetPartitions()	
+
+	if len(*pts) == 1 {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid topic name",
+			"details": "Topic does not have any partitions",
+		})
+		return
+	}
+
+	// how can we delete the partition with name or number
+
 }

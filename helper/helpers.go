@@ -139,9 +139,6 @@ func (l *LogFile) WriteIntoLogFile(str string) error {
 		Message: str,
 	}
 	index = append(index, &m)
-	for i := 0; i < len(index); i++ {
-		fmt.Printf("Hash %d, Offset %d\n", index[i].Hash, index[i].Offset)	
-	}	
 	return nil
 }
 
@@ -196,4 +193,6 @@ func (l *LogFile) Close() error {
 // TODO: impl add and remove partition then update the ring move affected keys and message to new partition and verify rebalancing 	
 
 // add partition to the topic done 
-// remove partition from the topic remaining
+// clear message appending done 
+// message offset tracking done
+// TODO: Remove partition from the topic
