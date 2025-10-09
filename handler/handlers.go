@@ -110,12 +110,10 @@ type createPartitionReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 }
 
-// TODO: remove print statement
 // create a partition in a topic
 func CreatePartitionInTopic(c *gin.Context) {
 	var req createPartitionReq
 	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("Error binding JSON: %v\n", err)
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request format",
 			"details": err.Error(),
@@ -140,11 +138,15 @@ func CreatePartitionInTopic(c *gin.Context) {
 		log.Fatalf("error creating new partition %s",err.Error())	
 		return
 	}
+	// copy the old ring
+	oldRing := make([]helper.Node,len(existingTopic.Ring))
+	copy(oldRing,existingTopic.Ring)
 	// append new part into the currentparts
 	*pts = append(*pts, newPart)
 
 	existingTopic.BuildRing(3)
-	fmt.Println("Ring is ", existingTopic.Ring)
+
+	
 	c.JSON(http.StatusOK,gin.H{
 		"messsage" : "partition created successfully",
 		"partitions": pts,
@@ -152,40 +154,5 @@ func CreatePartitionInTopic(c *gin.Context) {
 	
 }
 
-type removePartitionReq struct {
-	TopicName string `json:"topicname" binding:"required"`
-}
 
-func RemovePartition(c *gin.Context) {
-	var req removePartitionReq
-	if err := c.ShouldBindJSON(&req); err != nil {
-		fmt.Printf("Error binding JSON: %v\n", err)
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
-		})
-		return
-	}
-	existingTopic, ok := topicMap[req.TopicName]
-	
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid topic name",
-			"details": "Topic does not exist",
-		})
-		return
-	}
-
-	pts := existingTopic.GetPartitions()	
-
-	if len(*pts) == 1 {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid topic name",
-			"details": "Topic does not have any partitions",
-		})
-		return
-	}
-
-	// how can we delete the partition with name or number
-
-}
+// kafka dosnt support delete partition from existing topic potaintal data lose
