@@ -10,6 +10,7 @@ import (
 )
 
 // to create a topic send a data like this struct
+// TODO: Messages are not going in the new partitions only going in partitions that have been created with produce in { creation Time } after taht messages are only going in that Npartitions  
 type produceReq struct {
 	TopicName          string `json:"topicname" binding:"required"`
 	Key                string `json:"key" binding:"required"`
@@ -35,7 +36,7 @@ func Produce(c *gin.Context) {
 		})
 		return
 	}
-	// creating a topic with hard coded partitions
+	// creating a topic  
 	topic, err := helper.NewTopic(req.TopicName, req.NumberofPartitions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -59,6 +60,7 @@ func Produce(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
 		"message": "Message written successfully",
+		"partitions inn the topic is " : *topic.GetPartitions(),
 		"topic":   req.TopicName,
 		"key":     req.Key,
 	})
@@ -149,10 +151,16 @@ func CreatePartitionInTopic(c *gin.Context) {
 
 	newNodes := make([]helper.Node, 0, len(existingTopic.Ring))
 	// loop and compare all the node
+	// index out of bound error because existing ring would be bigger then old ring becayus we have added a new partition
+	// some error because of positition checking one to only one
+	// TODO we need to search in whole old ring with that one hash and index 
+	
 	for i := 0; i < len(existingTopic.Ring); i++ {
-		if existingTopic.Ring[i] != oldRing[i] {
-			newNodes = append(newNodes, existingTopic.Ring[i])
-		}
+			
+	}		
+
+	for _, n := range newNodes {
+		fmt.Println("New nodesd are new node:" , n)	
 	}
 	c.JSON(http.StatusOK, gin.H{
 		"messsage":   "partition created successfully",
@@ -160,5 +168,7 @@ func CreatePartitionInTopic(c *gin.Context) {
 	})
 
 }
+
+// seprate create from write 
 
 // kafka dosnt support delete partition from existing topic potaintal data lose
