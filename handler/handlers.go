@@ -11,16 +11,17 @@ import (
 
 // to create a topic send a data like this struct
 type produceReq struct {
-	TopicName string `json:"topicname" binding:"required"`
-	Key       string `json:"key" binding:"required"`
-	NumberofPartitions int `json:"Npartitions" binding:"min=1"`
-	Message   string `json:"message" binding:"required"`
+	TopicName          string `json:"topicname" binding:"required"`
+	Key                string `json:"key" binding:"required"`
+	NumberofPartitions int    `json:"Npartitions" binding:"min=1"`
+	Message            string `json:"message" binding:"required"`
 }
 
 type consumeReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 	Key       string `json:"key" binding:"required"`
 }
+
 // we can create a topic map which will store all the topcis and we can use it to read from the topic
 // create a map to store all the topics
 var topicMap = make(map[string]*helper.Topic)
@@ -35,7 +36,7 @@ func Produce(c *gin.Context) {
 		return
 	}
 	// creating a topic with hard coded partitions
-	topic,err := helper.NewTopic(req.TopicName, req.NumberofPartitions)
+	topic, err := helper.NewTopic(req.TopicName, req.NumberofPartitions)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to create topic",
@@ -44,9 +45,9 @@ func Produce(c *gin.Context) {
 		return
 	}
 	topicMap[req.TopicName] = topic
-	// TODO: make this hard coded vnode dynamic 
+	// TODO: make this hard coded vnode dynamic
 	topic.BuildRing(3)
-	// Write message to partition  
+	// Write message to partition
 	if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to write message",
@@ -121,7 +122,7 @@ func CreatePartitionInTopic(c *gin.Context) {
 		return
 	}
 	existingTopic, ok := topicMap[req.TopicName]
-	
+
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid topic name",
@@ -131,28 +132,33 @@ func CreatePartitionInTopic(c *gin.Context) {
 	}
 	// get all the logFiles with given topic name
 	pts := existingTopic.GetPartitions()
-	
+
 	filename := fmt.Sprintf("%s-partition-%d.log", req.TopicName, len(*pts))
-	newPart,err := helper.NewLogFile(filename)
+	newPart, err := helper.NewLogFile(filename)
 	if err != nil {
-		log.Fatalf("error creating new partition %s",err.Error())	
+		log.Fatalf("error creating new partition %s", err.Error())
 		return
 	}
 	// copy the old ring
-	oldRing := make([]helper.Node,len(existingTopic.Ring))
-	copy(oldRing,existingTopic.Ring)
+	oldRing := make([]helper.Node, len(existingTopic.Ring))
+	copy(oldRing, existingTopic.Ring)
 	// append new part into the currentparts
 	*pts = append(*pts, newPart)
-
+	// build the new ring
 	existingTopic.BuildRing(3)
 
-	
-	c.JSON(http.StatusOK,gin.H{
-		"messsage" : "partition created successfully",
+	newNodes := make([]helper.Node, 0, len(existingTopic.Ring))
+	// loop and compare all the node
+	for i := 0; i < len(existingTopic.Ring); i++ {
+		if existingTopic.Ring[i] != oldRing[i] {
+			newNodes = append(newNodes, existingTopic.Ring[i])
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"messsage":   "partition created successfully",
 		"partitions": pts,
-	})	
-	
-}
+	})
 
+}
 
 // kafka dosnt support delete partition from existing topic potaintal data lose
