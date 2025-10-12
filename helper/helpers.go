@@ -195,4 +195,3 @@ func (l *LogFile) Close() error {
 // add partition to the topic done 
 // clear message appending done 
 // message offset tracking done
-// TODO: Remove partition from the topic
