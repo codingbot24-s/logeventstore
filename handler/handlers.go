@@ -10,17 +10,11 @@ import (
 )
 
 // to create a topic send a data like this struct
-// TODO: Messages are not going in the new partitions only going in partitions that have been created with produce in { creation Time } after taht messages are only going in that Npartitions
-type produceReq struct {
-	TopicName          string `json:"topicname" binding:"required"`
-	Key                string `json:"key" binding:"required"`
-	NumberofPartitions int    `json:"Npartitions" binding:"min=1"`
-	Message            string `json:"message" binding:"required"`
-}
-
-type consumeReq struct {
-	TopicName string `json:"topicname" binding:"required"`
-	Key       string `json:"key" binding:"required"`
+// TODO: Messages are not going in the new partitions only going in partitions that have been created with produce in { creation Time } after taht messages are only going in that Npartitions SOLVE THIS
+type createTopicReq struct {
+	TopicName          string 	`json:"topicname" binding:"required"`
+	NumberofPartitions int    	`json:"Npartitions" binding:"min=1"`
+	NumberofNodes  int    		`json:"numberofnodes" binding:"min=1"`
 }
 
 // we can create a topic map which will store all the topcis and we can use it to read from the topic
@@ -28,7 +22,7 @@ type consumeReq struct {
 var topicMap = make(map[string]*helper.Topic)
 
 func Produce(c *gin.Context) {
-	var req produceReq
+	var req createTopicReq
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request format",
@@ -45,10 +39,44 @@ func Produce(c *gin.Context) {
 		})
 		return
 	}
+	// insert a topic in the map
 	topicMap[req.TopicName] = topic
-	// TODO: make this hard coded vnode dynamic
-	topic.BuildRing(3)
-	// Write message to partition
+	// build the ring with the number of nodes
+	topic.BuildRing(req.NumberofNodes)
+	
+	c.JSON(http.StatusOK, gin.H{
+		"status":                       "success",
+		"message":                      "Topic created successfully",
+		"topic":                        req.TopicName,
+	})
+}
+
+type writeMessageReq struct {
+	TopicName string `json:"topicname" binding:"required"`
+	Key       string `json:"key" binding:"required"`
+	Message   string `json:"message" binding:"required"`
+}
+
+
+func WriteMessage(c *gin.Context) {
+	var req writeMessageReq
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+	// find the topic in the map
+	topic, ok := topicMap[req.TopicName]
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid topic name",
+			"details": "Topic does not exist",
+		})
+		return
+	}
+	// write the message to the partition
 	if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to write message",
@@ -60,12 +88,14 @@ func Produce(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{
 		"status":                       "success",
 		"message":                      "Message written successfully",
-		"partitions inn the topic is ": *topic.GetPartitions(),
 		"topic":                        req.TopicName,
 		"key":                          req.Key,
 	})
 }
-
+type consumeReq struct {
+	TopicName string `json:"topicname" binding:"required"`
+	Key       string `json:"key" binding:"required"`
+}
 func Consume(c *gin.Context) {
 	var req consumeReq
 
@@ -124,7 +154,7 @@ func CreatePartitionInTopic(c *gin.Context) {
 		return
 	}
 	existingTopic, ok := topicMap[req.TopicName]
-
+	
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
 
@@ -134,8 +164,8 @@ func CreatePartitionInTopic(c *gin.Context) {
 		return
 	}
 	// get all the logFiles with given topic name
-	pts := existingTopic.GetPartitions()
-
+	pts := existingTopic.GetAllPartitions()
+	// TODO: this Remove this
 	filename := fmt.Sprintf("%s-partition-%d.log", req.TopicName, len(*pts))
 	newPart, err := helper.NewLogFile(filename)
 	if err != nil {
@@ -166,12 +196,10 @@ func CreatePartitionInTopic(c *gin.Context) {
 		}
 	}
 
-	for _, n := range newNodes {
-		fmt.Println("New nodesd are new node:", n)
-	}
 	c.JSON(http.StatusOK, gin.H{
 		"messsage":   "partition created successfully",
-		"partitions": pts,
+		"existing partitions": pts,
+		
 	})
 
 }

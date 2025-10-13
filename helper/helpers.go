@@ -88,19 +88,19 @@ func NewTopic(name string, numPartitions int) (*Topic, error) {
 
 // write into correct part
 func (t *Topic) WriteIntoPartition(key string, message string) error {
-	part := t.Get_partition(key)
+	part := t.GetPartitionForWrite(key)
 	return t.partitions[part].WriteIntoLogFile(message)
 }
 
 // read from correct part
 
 func (t *Topic) ReadFromPartiton(key string) (string, error) {
-	part := t.Get_partition(key)
+	part := t.GetPartitionForWrite(key)
 	return t.partitions[part].ReadFileFromOffset()
 }
 
 
-func (t *Topic) GetPartitions() *[]*LogFile {
+func (t *Topic) GetAllPartitions() *[]*LogFile {
 	return &t.partitions
 }
 
@@ -157,7 +157,7 @@ func (l *LogFile) ReadFileFromOffset() (string, error) {
 }
 
 // get the partition number
-func (t *Topic) Get_partition(key string) int {
+func (t *Topic) GetPartitionForWrite(key string) int {
 	hash := crc32.ChecksumIEEE([]byte(key))
 	// find the hash in the ring == this hash or > hash
 	// with binary search
