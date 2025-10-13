@@ -92,6 +92,8 @@ func WriteMessage(c *gin.Context) {
 		"key":                          req.Key,
 	})
 }
+
+// TODO: consume not working correctly
 type consumeReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 	Key       string `json:"key" binding:"required"`
@@ -117,6 +119,7 @@ func Consume(c *gin.Context) {
 		})
 		return
 	}
+	// why strring is empty
 	str, err := t.ReadFromPartiton(req.Key)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -204,6 +207,5 @@ func CreatePartitionInTopic(c *gin.Context) {
 
 }
 
-//TODO: seprate create from write
 
 // kafka dosnt support delete partition from existing topic potaintal data lose

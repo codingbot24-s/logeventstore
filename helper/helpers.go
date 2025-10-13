@@ -15,10 +15,10 @@ type LogFile struct {
 	file     *os.File
 }
 
-// every message will have its offset and Hash 
+// every message will have its offset and Hash
 type Message struct {
-	Offset int
-	Hash int
+	Offset  int
+	Hash    int
 	Message string
 }
 
@@ -60,7 +60,7 @@ func (t *Topic) BuildRing(vNode int) {
 		}
 
 	}
-	// sort the ring slice in < > 
+	// sort the ring slice in < >
 	sort.Slice(t.Ring, func(i, j int) bool {
 		return t.Ring[i].Hash < t.Ring[j].Hash
 	})
@@ -99,7 +99,6 @@ func (t *Topic) ReadFromPartiton(key string) (string, error) {
 	return t.partitions[part].ReadFileFromOffset()
 }
 
-
 func (t *Topic) GetAllPartitions() *[]*LogFile {
 	return &t.partitions
 }
@@ -115,7 +114,7 @@ func (t *Topic) CloseP() error {
 	return Eerr
 }
 
-var index = make([]*Message, 0,2)
+var index = make([]*Message, 0, 2)
 
 // logfile write
 func (l *LogFile) WriteIntoLogFile(str string) error {
@@ -123,19 +122,19 @@ func (l *LogFile) WriteIntoLogFile(str string) error {
 		return fmt.Errorf("log file is not initialized")
 	}
 	// write with new line for each message
-	newStr := fmt.Sprintf("%d| %s", len(str),str)
+	newStr := fmt.Sprintf("%d| %s", len(str), str)
 	_, err := l.file.Write([]byte(newStr + "\n"))
 	if err != nil {
 		log.Fatal("error writing in logfile", l.FileName, err)
 	}
 	h := crc32.ChecksumIEEE([]byte(str))
-	offset,err := l.file.Seek(0, io.SeekCurrent)
+	offset, err := l.file.Seek(0, io.SeekCurrent)
 	if err != nil {
 		log.Fatal("error getting offset", l.FileName, err)
 	}
 	m := Message{
-		Offset: int(offset),
-		Hash: int(h),
+		Offset:  int(offset),
+		Hash:    int(h),
 		Message: str,
 	}
 	index = append(index, &m)
@@ -190,8 +189,8 @@ func (l *LogFile) Close() error {
 	return nil
 }
 
-// TODO: impl add and remove partition then update the ring move affected keys and message to new partition and verify rebalancing 	
+// TODO: impl add and remove partition then update the ring move affected keys and message to new partition and verify rebalancing
 
-// add partition to the topic done 
-// clear message appending done 
+// add partition to the topic done
+// clear message appending done
 // message offset tracking done
