@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"sort"
+
 )
 
 // represent one partition
@@ -88,14 +89,20 @@ func NewTopic(name string, numPartitions int) (*Topic, error) {
 
 // write into correct part
 func (t *Topic) WriteIntoPartition(key string, message string) error {
-	part := t.GetPartitionForWrite(key)
+	part,err := t.GetPartitionForWrite(key)
+	if err != nil {
+		return err
+	}
 	return t.partitions[part].WriteIntoLogFile(message)
 }
 
 // read from correct part
 
 func (t *Topic) ReadFromPartiton(key string) (string, error) {
-	part := t.GetPartitionForWrite(key)
+	part,err := t.GetPartitionForWrite(key)
+	if err != nil {
+		return "", err
+	}
 	return t.partitions[part].ReadFileFromOffset()
 }
 
@@ -141,7 +148,7 @@ func (l *LogFile) WriteIntoLogFile(str string) error {
 	return nil
 }
 
-// log file read
+// log file read 
 func (l *LogFile) ReadFileFromOffset() (string, error) {
 	if l.file == nil {
 		return "", fmt.Errorf("log file is not initialized")
@@ -155,30 +162,38 @@ func (l *LogFile) ReadFileFromOffset() (string, error) {
 	return string(buf[:n]), nil
 }
 
-// get the partition number
-func (t *Topic) GetPartitionForWrite(key string) int {
-	hash := crc32.ChecksumIEEE([]byte(key))
-	// find the hash in the ring == this hash or > hash
-	// with binary search
+// get the partition number with binary search
+func (t *Topic) GetPartitionForWrite(key string) (int,error){
+	
+	if len(t.Ring) == 0 {
+		return 0, fmt.Errorf("no partitions in ring ")
+	}
+
+	hash := int(crc32.ChecksumIEEE([]byte(key)))
+	// last node < Hash
+	if  hash > t.Ring[len(t.Ring)-1].Hash {
+		return t.Ring[0].PartitionIndex, nil
+	}
+
 	low := 0
 	high := len(t.Ring) - 1
+
 	for low <= high {
-
 		mid := low + (high-low)/2
-
-		if t.Ring[mid].Hash == int(hash) {
-			return t.Ring[mid].PartitionIndex
-		} else if t.Ring[mid].Hash > int(hash) {
+		
+		if t.Ring[mid].Hash == hash {
+			// Exact match found
+			return t.Ring[mid].PartitionIndex, nil
+		} else if t.Ring[mid].Hash > hash {
+			if mid == 0 || t.Ring[mid-1].Hash < hash {
+				return t.Ring[mid].PartitionIndex, nil
+			}
 			high = mid - 1
 		} else {
 			low = mid + 1
 		}
 	}
-	if low < len(t.Ring) {
-		return t.Ring[low].PartitionIndex
-	}
-	// first entry of ring
-	return t.Ring[0].PartitionIndex
+	return t.Ring[0].PartitionIndex, nil
 }
 
 // close one log file
