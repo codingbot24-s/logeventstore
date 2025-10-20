@@ -101,8 +101,9 @@ func (t *Topic) WriteIntoPartition(key string, message string) error {
 func (t *Topic) ReadFromPartiton(key string) (string, error) {
 	part,err := t.GetPartitionForWrite(key)
 	if err != nil {
-		return "", err
+		return "error in getting partition", err
 	}
+	
 	return t.partitions[part].ReadFileFromOffset()
 }
 
@@ -153,6 +154,8 @@ func (l *LogFile) ReadFileFromOffset() (string, error) {
 	if l.file == nil {
 		return "", fmt.Errorf("log file is not initialized")
 	}
+	// why buffer is empty 
+	_, _ = l.file.Seek(0, io.SeekStart) 
 	buf := make([]byte, 1024)
 	n, err := l.file.Read(buf)
 	if err != nil && err != io.EOF {
