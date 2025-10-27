@@ -164,7 +164,8 @@ func (l *LogFile) ReadFileFromOffset() (string, error) {
 	}
 	return string(buf[:n]), nil
 }
-
+//TODO: when we restart the server the topic is missing so we cant read from the topic fix this;
+// TODO: we need to maintain offset after each write so we can cosume by the offset 
 // get the partition number with binary search
 func (t *Topic) GetPartitionForWrite(key string) (int,error){
 	
