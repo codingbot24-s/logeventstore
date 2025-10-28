@@ -97,13 +97,13 @@ func (t *Topic) WriteIntoPartition(key string, message string) error {
 
 // read from correct part
 
-func (t *Topic) ReadFromPartiton(key string) (string, error) {
+func (t *Topic) ReadFromPartiton(key string, offset int) (string, error) {
 	part, err := t.GetPartitionForWrite(key)
 	if err != nil {
 		return "error in getting partition", err
 	}
 
-	return t.partitions[part].ReadFileFromOffset()
+	return t.partitions[part].ReadFileFromOffset(offset)
 }
 
 func (t *Topic) GetAllPartitions() *[]*LogFile {
@@ -120,16 +120,18 @@ func (t *Topic) CloseP() error {
 
 	return Eerr
 }
-// slice of *message 
+
+// slice of *message
 // TODO: keep an index per log file
 var index = make([]*Message, 0, 2)
-// TODO: message offset done now we need to consume it with offset 
+
+// TODO: message offset done now we need to consume it with offset
 // logfile write
 func (l *LogFile) WriteIntoLogFile(str string) error {
 	if l.file == nil {
 		return fmt.Errorf("log file is not initialized")
 	}
-	// set the offset first 
+	// set the offset first
 	h := crc32.ChecksumIEEE([]byte(str))
 	// message offset
 	offset, err := l.file.Seek(0, io.SeekCurrent)
@@ -148,17 +150,20 @@ func (l *LogFile) WriteIntoLogFile(str string) error {
 	if err != nil {
 		log.Fatal("error writing in logfile", l.FileName, err)
 	}
-
+	//TODO: REMOVE THIS			
+	for _, m := range index {
+		fmt.Println("Message offset", m.Offset)
+	}
 	return nil
 }
 
 // log file read we could take the offset as a args
-func (l *LogFile) ReadFileFromOffset() (string, error) {
+func (l *LogFile) ReadFileFromOffset(offset int) (string, error) {
 	if l.file == nil {
 		return "", fmt.Errorf("log file is not initialized")
 	}
-	// reading file from start we need to read it from the offset 
-	_, _ = l.file.Seek(0, io.SeekStart)
+	// reading file from start we need to read it from the offset
+	_, _ = l.file.Seek(int64(offset), io.SeekStart)
 	buf := make([]byte, 1024)
 	n, err := l.file.Read(buf)
 	if err != nil && err != io.EOF {

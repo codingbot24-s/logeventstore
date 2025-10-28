@@ -12,9 +12,9 @@ import (
 // to create a topic send a data like this struct
 // TODO: Messages are not going in the new partitions only going in partitions that have been created with produce in { creation Time } after taht messages are only going in that Npartitions SOLVE THIS
 type createTopicReq struct {
-	TopicName          string 	`json:"topicname" binding:"required"`
-	NumberofPartitions int    	`json:"Npartitions" binding:"min=1"`
-	NumberofNodes  int    		`json:"numberofnodes" binding:"min=1"`
+	TopicName          string `json:"topicname" binding:"required"`
+	NumberofPartitions int    `json:"Npartitions" binding:"min=1"`
+	NumberofNodes      int    `json:"numberofnodes" binding:"min=1"`
 }
 
 // we can create a topic map which will store all the topcis and we can use it to read from the topic
@@ -43,11 +43,11 @@ func Produce(c *gin.Context) {
 	topicMap[req.TopicName] = topic
 	// build the ring with the number of nodes
 	topic.BuildRing(req.NumberofNodes)
-	
+
 	c.JSON(http.StatusOK, gin.H{
-		"status":                       "success",
-		"message":                      "Topic created successfully",
-		"topic":                        req.TopicName,
+		"status":  "success",
+		"message": "Topic created successfully",
+		"topic":   req.TopicName,
 	})
 }
 
@@ -56,7 +56,6 @@ type writeMessageReq struct {
 	Key       string `json:"key" binding:"required"`
 	Message   string `json:"message" binding:"required"`
 }
-
 
 func WriteMessage(c *gin.Context) {
 	var req writeMessageReq
@@ -86,17 +85,19 @@ func WriteMessage(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"status":                       "success",
-		"message":                      "Message written successfully",
-		"topic":                        req.TopicName,
-		"key":                          req.Key,
+		"status":  "success",
+		"message": "Message written successfully",
+		"topic":   req.TopicName,
+		"key":     req.Key,
 	})
 }
 
 type consumeReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 	Key       string `json:"key" binding:"required"`
+	Offset    int    `json:"offset" binding:"omitempty"`
 }
+
 func Consume(c *gin.Context) {
 	var req consumeReq
 
@@ -119,7 +120,7 @@ func Consume(c *gin.Context) {
 		return
 	}
 	// why strring is empty
-	str, err := t.ReadFromPartiton(req.Key)
+	str, err := t.ReadFromPartiton(req.Key,req.Offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to read from log file",
@@ -156,7 +157,7 @@ func CreatePartitionInTopic(c *gin.Context) {
 		return
 	}
 	existingTopic, ok := topicMap[req.TopicName]
-	
+
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
 
@@ -189,7 +190,7 @@ func CreatePartitionInTopic(c *gin.Context) {
 		key := fmt.Sprintf("%d-%d", node.Hash, node.PartitionIndex)
 		oldNodesMap[key] = true
 	}
-	
+
 	// loop and compare all the node
 	for _, node := range existingTopic.Ring {
 		key := fmt.Sprintf("%d-%d", node.Hash, node.PartitionIndex)
@@ -199,9 +200,8 @@ func CreatePartitionInTopic(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, gin.H{
-		"messsage":   "partition created successfully",
+		"messsage":            "partition created successfully",
 		"existing partitions": pts,
-		
 	})
 
 }
