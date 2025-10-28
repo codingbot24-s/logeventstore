@@ -93,8 +93,6 @@ func WriteMessage(c *gin.Context) {
 	})
 }
 
-// TODO: consume not working correctly
-// we are correctly getting all the partitions but not getting the message error in read
 type consumeReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 	Key       string `json:"key" binding:"required"`
@@ -207,6 +205,3 @@ func CreatePartitionInTopic(c *gin.Context) {
 	})
 
 }
-
-
-// kafka dosnt support delete partition from existing topic potaintal data lose

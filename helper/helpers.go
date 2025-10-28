@@ -7,7 +7,6 @@ import (
 	"log"
 	"os"
 	"sort"
-
 )
 
 // represent one partition
@@ -89,7 +88,7 @@ func NewTopic(name string, numPartitions int) (*Topic, error) {
 
 // write into correct part
 func (t *Topic) WriteIntoPartition(key string, message string) error {
-	part,err := t.GetPartitionForWrite(key)
+	part, err := t.GetPartitionForWrite(key)
 	if err != nil {
 		return err
 	}
@@ -99,11 +98,11 @@ func (t *Topic) WriteIntoPartition(key string, message string) error {
 // read from correct part
 
 func (t *Topic) ReadFromPartiton(key string) (string, error) {
-	part,err := t.GetPartitionForWrite(key)
+	part, err := t.GetPartitionForWrite(key)
 	if err != nil {
 		return "error in getting partition", err
 	}
-	
+
 	return t.partitions[part].ReadFileFromOffset()
 }
 
@@ -121,21 +120,18 @@ func (t *Topic) CloseP() error {
 
 	return Eerr
 }
-
+// slice of *message 
+// TODO: keep an index per log file
 var index = make([]*Message, 0, 2)
-
+// TODO: message offset done now we need to consume it with offset 
 // logfile write
 func (l *LogFile) WriteIntoLogFile(str string) error {
 	if l.file == nil {
 		return fmt.Errorf("log file is not initialized")
 	}
-	// write with new line for each message
-	newStr := fmt.Sprintf("%d| %s", len(str), str)
-	_, err := l.file.Write([]byte(newStr + "\n"))
-	if err != nil {
-		log.Fatal("error writing in logfile", l.FileName, err)
-	}
+	// set the offset first 
 	h := crc32.ChecksumIEEE([]byte(str))
+	// message offset
 	offset, err := l.file.Seek(0, io.SeekCurrent)
 	if err != nil {
 		log.Fatal("error getting offset", l.FileName, err)
@@ -146,16 +142,23 @@ func (l *LogFile) WriteIntoLogFile(str string) error {
 		Message: str,
 	}
 	index = append(index, &m)
+	// write with new line for each message
+	newStr := fmt.Sprintf("%d| %s", len(str), str)
+	_, err = l.file.Write([]byte(newStr + "\n"))
+	if err != nil {
+		log.Fatal("error writing in logfile", l.FileName, err)
+	}
+
 	return nil
 }
 
-// log file read 
+// log file read we could take the offset as a args
 func (l *LogFile) ReadFileFromOffset() (string, error) {
 	if l.file == nil {
 		return "", fmt.Errorf("log file is not initialized")
 	}
-	// why buffer is empty 
-	_, _ = l.file.Seek(0, io.SeekStart) 
+	// reading file from start we need to read it from the offset 
+	_, _ = l.file.Seek(0, io.SeekStart)
 	buf := make([]byte, 1024)
 	n, err := l.file.Read(buf)
 	if err != nil && err != io.EOF {
@@ -164,18 +167,18 @@ func (l *LogFile) ReadFileFromOffset() (string, error) {
 	}
 	return string(buf[:n]), nil
 }
-//TODO: when we restart the server the topic is missing so we cant read from the topic fix this;
-// TODO: we need to maintain offset after each write so we can cosume by the offset 
-// get the partition number with binary search
-func (t *Topic) GetPartitionForWrite(key string) (int,error){
-	
+
+// TODO: when we restart the server the topic is missing so we cant read from the topic fix this;
+
+func (t *Topic) GetPartitionForWrite(key string) (int, error) {
+
 	if len(t.Ring) == 0 {
 		return 0, fmt.Errorf("no partitions in ring ")
 	}
 
 	hash := int(crc32.ChecksumIEEE([]byte(key)))
 	// last node < Hash
-	if  hash > t.Ring[len(t.Ring)-1].Hash {
+	if hash > t.Ring[len(t.Ring)-1].Hash {
 		return t.Ring[0].PartitionIndex, nil
 	}
 
@@ -184,7 +187,7 @@ func (t *Topic) GetPartitionForWrite(key string) (int,error){
 
 	for low <= high {
 		mid := low + (high-low)/2
-		
+
 		if t.Ring[mid].Hash == hash {
 			// Exact match found
 			return t.Ring[mid].PartitionIndex, nil
