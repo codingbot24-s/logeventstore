@@ -217,7 +217,7 @@ func (l *LogFile) Close() error {
 }
 
 // TODO: impl add partition then update the ring move affected keys and message to new partition and verify rebalancing
-
+// TODO: move the affected keys -> messages to new partition 
 // add partition to the topic done
 // clear message appending done
 // message offset tracking done

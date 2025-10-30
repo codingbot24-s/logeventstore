@@ -168,7 +168,6 @@ func CreatePartitionInTopic(c *gin.Context) {
 	}
 	// get all the logFiles with given topic name
 	pts := existingTopic.GetAllPartitions()
-	// TODO: this Remove this
 	filename := fmt.Sprintf("%s-partition-%d.log", req.TopicName, len(*pts))
 	newPart, err := helper.NewLogFile(filename)
 	if err != nil {
