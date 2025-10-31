@@ -1,0 +1,8 @@
+{
+    "test_topic" : {
+       "0" : {
+            "leaderID" : 1,
+            "replicas" : [1,2]
+       } 
+    }
+}
