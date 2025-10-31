@@ -7,12 +7,15 @@ import (
 	"log"
 	"os"
 	"sort"
+	"sync"
 )
 
 // represent one partition
 type LogFile struct {
 	FileName string
 	file     *os.File
+	mu       sync.Mutex
+	index    []*Message
 }
 
 // every message will have its offset and Hash
@@ -21,7 +24,6 @@ type Message struct {
 	Hash    int
 	Message string
 }
-
 // create a new logfile return the * of struct
 func NewLogFile(fname string) (*LogFile, error) {
 	file, err := os.OpenFile(fname, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
@@ -92,7 +94,12 @@ func (t *Topic) WriteIntoPartition(key string, message string) error {
 	if err != nil {
 		return err
 	}
-	return t.partitions[part].WriteIntoLogFile(message)
+
+	err = t.partitions[part].WriteIntoLogFile(message);
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 // read from correct part
@@ -122,38 +129,38 @@ func (t *Topic) CloseP() error {
 }
 
 // slice of *message
-// TODO: keep an index per log file
-var index = make([]*Message, 0, 2)
 
 // TODO: message offset done now we need to consume it with offset
 // logfile write
+
+//TODO: we cann implement the write worker pool 
+
 func (l *LogFile) WriteIntoLogFile(str string) error {
 	if l.file == nil {
 		return fmt.Errorf("log file is not initialized")
 	}
-	// set the offset first
-	h := crc32.ChecksumIEEE([]byte(str))
-	// message offset
+	newStr := fmt.Sprintf("%d| %s", len(str), str)
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	offset, err := l.file.Seek(0, io.SeekCurrent)
 	if err != nil {
-		log.Fatal("error getting offset", l.FileName, err)
+		return fmt.Errorf("error getting offset for %s: %w", l.FileName, err)
 	}
+	_, err = l.file.Write([]byte(newStr + "\n"))
+	if err != nil {
+		return fmt.Errorf("error writing to logfile %s: %w", l.FileName, err)
+	}
+
+	h := crc32.ChecksumIEEE([]byte(str))
+	// message offset
+
 	m := Message{
 		Offset:  int(offset),
 		Hash:    int(h),
 		Message: str,
 	}
-	index = append(index, &m)
-	// write with new line for each message
-	newStr := fmt.Sprintf("%d| %s", len(str), str)
-	_, err = l.file.Write([]byte(newStr + "\n"))
-	if err != nil {
-		log.Fatal("error writing in logfile", l.FileName, err)
-	}
-	//TODO: REMOVE THIS			
-	for _, m := range index {
-		fmt.Println("Message offset", m.Offset)
-	}
+
+	l.index = append(l.index, &m)
 	return nil
 }
 
@@ -163,6 +170,8 @@ func (l *LogFile) ReadFileFromOffset(offset int) (string, error) {
 		return "", fmt.Errorf("log file is not initialized")
 	}
 	// reading file from start we need to read it from the offset
+	l.mu.Lock()
+	defer l.mu.Unlock()
 	_, _ = l.file.Seek(int64(offset), io.SeekStart)
 	buf := make([]byte, 1024)
 	n, err := l.file.Read(buf)
@@ -174,6 +183,7 @@ func (l *LogFile) ReadFileFromOffset(offset int) (string, error) {
 }
 
 // TODO: when we restart the server the topic is missing so we cant read from the topic fix this;
+// TODO: we need to move all the messages from the old partition to the new partition after adding the partition mean affected entries will be moved to new partition
 
 func (t *Topic) GetPartitionForWrite(key string) (int, error) {
 

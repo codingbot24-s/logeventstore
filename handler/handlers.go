@@ -119,7 +119,6 @@ func Consume(c *gin.Context) {
 		})
 		return
 	}
-	// why strring is empty
 	str, err := t.ReadFromPartiton(req.Key,req.Offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
