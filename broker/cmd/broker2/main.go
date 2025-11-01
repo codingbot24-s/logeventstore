@@ -5,47 +5,64 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"os"
 )
-
-type Broker struct {
-	NodeID int    `json:"nodeID"`
-	Port   int    `json:"port"`
-	Peers  []Peer `json:"peers"`
-}
 
 type Peer struct {
 	NodeID int `json:"nodeID"`
 	Port   int `json:"port"`
 }
 
-func main() {
-	filename := "broker2.json"
+type Partition struct {
+	LeaderID int   `json:"leaderID"`
+	Replicas []int `json:"replicas"`
+}
+type Topic struct {
+	Partitions map[string]Partition
+}
 
+type Broker struct {
+	NodeID int    `json:"nodeID"`
+	Port   int    `json:"port"`
+	Peers  []Peer `json:"peers"`
+	Topics map[string]Topic
+}
+// map of topic and topic is map of partition
+type clusterMap map[string]map[string]Partition
+
+func read_clusrter_meta(filename string) (*clusterMap, error) {
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
-		log.Printf("error opening file", err.Error())
-		return
+		return nil, fmt.Errorf("error opening file: %w", err)
 	}
+	defer f.Close()
 	data := make([]byte, 1024)
 	_, err = f.Read(data)
-	trimmed_data := bytes.Trim(data, "\x00")
 	if err != nil && err != io.EOF {
-		log.Printf("error reading file")
+		return nil, fmt.Errorf("error reading file: %w", err)
+	}
+
+	trimmed_data := bytes.Trim(data, "\x00")
+	var c clusterMap
+	// Marshal the data into a clusterMap
+	err = json.Unmarshal(trimmed_data, &c)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling: %w", err)
+	}
+
+	// returing the clusterMap pointer
+	return &c, nil
+}
+
+// func readBrokerConfig(filename string) (*Broker, error) {
+
+// }
+
+func main() {
+	filename := "cluster_meta.json"
+	_, err := read_clusrter_meta(filename)
+	if err != nil {
+		fmt.Println("error reading cluster meta", err.Error())
 		return
 	}
-	var b Broker
-	err = json.Unmarshal(trimmed_data, &b)
-	if err != nil {
-		fmt.Println("error unmarshalling", err.Error())
-	}
-
-	fmt.Println("Broker1 nodeID", b.NodeID)
-	fmt.Println("Broker1 port", b.Port)
-	for _, p := range b.Peers {
-		fmt.Println("Peer nodeID", p.NodeID)
-		fmt.Println("Peer port", p.Port)
-	}
-
 }

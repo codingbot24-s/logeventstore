@@ -40,7 +40,7 @@ func main() {
 	if err != nil {
 		fmt.Println("error unmarshalling", err.Error())
 	}
-
+	defer f.Close()
 	fmt.Println("Broker1 nodeID", b.NodeID)
 	fmt.Println("Broker1 port", b.Port)
 	for _, p := range b.Peers {
