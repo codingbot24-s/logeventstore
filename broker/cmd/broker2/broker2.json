@@ -1,0 +1,10 @@
+{
+    "nodeID": 2,
+    "port": 8081,
+    "peers": [
+        {
+            "nodeID": 1,
+            "port": 8080
+        }
+    ]
+}
