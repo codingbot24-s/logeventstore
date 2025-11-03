@@ -1,3 +1,4 @@
+
 package main
 
 import (
@@ -27,42 +28,91 @@ type Broker struct {
 	Peers  []Peer `json:"peers"`
 	Topics map[string]Topic
 }
+
 // map of topic and topic is map of partition
+// with this we can correclty read the cluster metadata
 type clusterMap map[string]map[string]Partition
 
-func read_clusrter_meta(filename string) (*clusterMap, error) {
+func read_cluster_metadata(filename string) (int, error) {
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
-		return nil, fmt.Errorf("error opening file: %w", err)
+		return 0, fmt.Errorf("error opening file: %w", err)
 	}
 	defer f.Close()
 	data := make([]byte, 1024)
 	_, err = f.Read(data)
 	if err != nil && err != io.EOF {
-		return nil, fmt.Errorf("error reading file: %w", err)
+		return 0, fmt.Errorf("error reading file: %w", err)
 	}
 
 	trimmed_data := bytes.Trim(data, "\x00")
-	var c clusterMap
-	// Marshal the data into a clusterMap
-	err = json.Unmarshal(trimmed_data, &c)
-	if err != nil {
-		return nil, fmt.Errorf("error unmarshalling: %w", err)
-	}
 
+	// Marshal the data into a clusterMap
+	var c clusterMap
+	err = json.Unmarshal(trimmed_data, &c)
+	if err != nil{
+		return 0, fmt.Errorf("error unmarshalling: %w", err)
+	}	
+		
+				
+	// TODO: we need to check is then node id of this node == leaderid then this node is the leader
 	// returing the clusterMap pointer
-	return &c, nil
+	
+
+	return c["test_topic"]["0"].LeaderID, nil
 }
 
-// func readBrokerConfig(filename string) (*Broker, error) {
+func readBrokerConfig(filename string) (int, error) {
+	// how to open a file from cmd dir
 
-// }
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
+	if err != nil {
+		return 0, fmt.Errorf("error opening file: %w", err)
+	}
+
+	data := make([]byte, 1023)
+	_, err = f.Read(data)
+	if err != nil && err != io.EOF {
+		return 0, fmt.Errorf("error reading file: %w", err)
+	}
+
+	trimmed_data := bytes.Trim(data, "\x00")
+
+	var b Broker
+	err = json.Unmarshal(trimmed_data, &b)
+
+	if err != nil {
+		return 0, fmt.Errorf("error unmarshaling json %w", err)
+	}
+
+	
+
+	return b.NodeID, nil
+}
+
+func checkLeader(lId,nodeId int ) bool {
+	if lId == nodeId {
+		return true
+	}
+	return false
+}
 
 func main() {
-	filename := "cluster_meta.json"
-	_, err := read_clusrter_meta(filename)
+	clusterfilename := "../../cluster_meta.json"
+	brokerfilename := "broker2.json"
+	leaderID,err := read_cluster_metadata(clusterfilename)
 	if err != nil {
-		fmt.Println("error reading cluster meta", err.Error())
+		fmt.Println("error reading cluster metadata",err)
+	}
+	nodeId,err := readBrokerConfig(brokerfilename)	
+
+	if err != nil {
+		fmt.Println("error reading broker config %w", err)
+	}
+	if checkLeader(leaderID,nodeId) {
+		fmt.Println("I am the leader of the test_topic")
 		return
 	}
+
+	fmt.Println("I am not the leader of the test_topic")
 }
