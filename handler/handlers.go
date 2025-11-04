@@ -119,7 +119,7 @@ func Consume(c *gin.Context) {
 		})
 		return
 	}
-	str, err := t.ReadFromPartiton(req.Key,req.Offset)
+	str, err := t.ReadFromPartiton(req.Key, req.Offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to read from log file",
@@ -204,12 +204,11 @@ func CreatePartitionInTopic(c *gin.Context) {
 
 }
 
-
 type Replication struct {
 	TopicName string `json:"topicname" binding:"required"`
-	Partition int `json:"partition" binding:"required"`
-	Offset int `json:"offset" binding:"required"`
-	Message string `json:"message" binding:"required"`
+	Partition int    `json:"partition" binding:"required"`
+	Offset    int    `json:"offset" binding:"required"`
+	Message   string `json:"message" binding:"required"`
 }
 
 func Replicate(c *gin.Context) {
@@ -221,10 +220,10 @@ func Replicate(c *gin.Context) {
 		})
 		return
 	}
-	
 
-	c.JSON(http.StatusOK,gin.H{
-		"status": "success",
+	c.JSON(http.StatusOK, gin.H{
+		"status":  "success",
 		"message": "message replicated successfully",
 	})
 }
+
