@@ -10,20 +10,20 @@ import (
 func startReadConfig() {
 	clusterfilename := "../../cluster_meta.json"
 	brokerfilename := "broker1.json"
-	leaderID, err := helper.Read_cluster_metadata(clusterfilename)
+	err := helper.ReadClusterMetadata(clusterfilename)
 	if err != nil {
 		fmt.Println("error reading cluster metadata", err)
 	}
-	nodeId, err := helper.ReadBrokerConfig(brokerfilename)
+	err = helper.ReadConfig(brokerfilename)
 
 	if err != nil {
 		fmt.Println("error reading broker config %w", err)
 	}
-	if helper.CheckLeader(leaderID, nodeId) {
-		fmt.Println("I am the leader of the test_topic")
-		return
-	}
-	fmt.Println("I am not the leader of the test_topic")
+	// if helper.CheckLeader(leaderID, nodeId) {
+	// 	fmt.Println("I am the leader of the test_topic")
+	// 	return
+	// }
+	// fmt.Println("I am not the leader of the test_topic")
 }
 
 func main() {

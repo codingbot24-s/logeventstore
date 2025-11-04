@@ -56,10 +56,11 @@ type writeMessageReq struct {
 	Key       string `json:"key" binding:"required"`
 	Message   string `json:"message" binding:"required"`
 }
-// TODO: write message It reads cluster_meta.json to find the leader broker for the topic/partition.	
-// TODO: we need to read the broker config to find the port of the leader broker
+
+// TODO: write message It reads cluster_meta.json to find the leader broker for the topic/partition.
+// TODO: we need to read the broker config to find the port of the leader broker currently we are getting the id
 func WriteMessage(c *gin.Context) {
-	_,err := helper.Read_cluster_metadata("./broker/cluster_meta.json")	
+	err := helper.ReadClusterMetadata("./broker/cluster_meta.json")
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -67,8 +68,6 @@ func WriteMessage(c *gin.Context) {
 			"details": err.Error(),
 		})
 	}
-
-	
 
 	// var req writeMessageReq
 	// if err := c.BindJSON(&req); err != nil {
@@ -238,4 +237,3 @@ func Replicate(c *gin.Context) {
 		"message": "message replicated successfully",
 	})
 }
-

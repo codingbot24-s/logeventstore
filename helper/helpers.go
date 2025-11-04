@@ -7,6 +7,7 @@ import (
 	"hash/crc32"
 	"io"
 	"log"
+	"maps"
 	"os"
 	"sort"
 	"sync"
@@ -232,7 +233,6 @@ func (l *LogFile) Close() error {
 // TODO: impl add partition then update the ring move affected keys and message to new partition and verify rebalancing
 // TODO: add partition to the topic done
 
-
 // READ CLUSTER META
 type Peer struct {
 	NodeID int `json:"nodeID"`
@@ -254,64 +254,89 @@ type Broker struct {
 	Topics map[string]BrokerTopic
 }
 
-
-type clusterMap map[string]map[string]Partition
-// currently returning the leader id of the topic
-func Read_cluster_metadata(filename string) (int, error) {
+func ReadConfig(filename string) error {
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
-		return 0, fmt.Errorf("error opening file: %w", err)
+		return fmt.Errorf("error opening file: %w", err)
 	}
 	defer f.Close()
 	data := make([]byte, 1024)
 	_, err = f.Read(data)
 	if err != nil && err != io.EOF {
-		return 0, fmt.Errorf("error reading file: %w", err)
+		return fmt.Errorf("error reading file: %w", err)
 	}
 
-	trimmed_data := bytes.Trim(data, "\x00")
+	trimmedData := bytes.Trim(data, "\x00")
 
-	// Marshal the data into a clusterMap
-	var c clusterMap
-	err = json.Unmarshal(trimmed_data, &c)
+	b := &Broker{}
+	err = b.LoadConfig(trimmedData)
+
 	if err != nil {
-		return 0, fmt.Errorf("error unmarshalling: %w", err)
+		return fmt.Errorf("error loading config file: %w", err)
 	}
 
-	return c["test_topic"]["0"].LeaderID, nil
+	return nil
 }
 
-
-
-func ReadBrokerConfig(filename string) (int, error) {
+func ReadClusterMetadata(filename string) error {
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
-		return 0, fmt.Errorf("error opening file: %w", err)
+		return fmt.Errorf("error opening file: %w", err)
 	}
-
-	data := make([]byte, 1023)
+	defer f.Close()
+	data := make([]byte, 1024)
 	_, err = f.Read(data)
 	if err != nil && err != io.EOF {
-		return 0, fmt.Errorf("error reading file: %w", err)
+		return fmt.Errorf("error reading file: %w", err)
+	}
+	trimmedData := bytes.Trim(data, "\x00")
+	b := &Broker{}
+	if err := b.LoadClusterMetadata(trimmedData); err != nil {
+		return fmt.Errorf("error loading cluster metadata: %w", err)
 	}
 
-	trimmed_data := bytes.Trim(data, "\x00")
+	return nil
+}
 
-	var b Broker
-	err = json.Unmarshal(trimmed_data, &b)
+func (b *Broker) LoadConfig(configData []byte) error {
 
+	type configFile struct {
+		NodeID int    `json:"nodeID"`
+		Port   int    `json:"port"`
+		Peers  []Peer `json:"peers"`
+	}
+	var c configFile
+	err := json.Unmarshal(configData, &c)
 	if err != nil {
-		return 0, fmt.Errorf("error unmarshaling json %w", err)
+		return fmt.Errorf("error unmarshalling config file: %w", err)
 	}
 
-	return b.NodeID, nil
-}
+	b.NodeID = c.NodeID
+	b.Port = c.Port
+	b.Peers = c.Peers
 
-func CheckLeader(lId, nodeId int) bool {
-	if lId == nodeId {
-		return true
+	if b.Topics == nil {
+		b.Topics = make(map[string]BrokerTopic)
 	}
-	return false
+
+	return nil
 }
 
+func (b *Broker) LoadClusterMetadata(metadataData []byte) error {
+	type ClusterMetadata struct {
+		Topics map[string]BrokerTopic `json:"topics"`
+	}
 
+	var metadata ClusterMetadata
+	if err := json.Unmarshal(metadataData, &metadata); err != nil {
+		return fmt.Errorf("failed to unmarshal cluster metadata: %w", err)
+	}
+
+	if b.Topics == nil {
+		b.Topics = make(map[string]BrokerTopic)
+	}
+	maps.Copy(b.Topics, metadata.Topics)
+
+	return nil
+}
+// TODO: we need to check the leader id 
