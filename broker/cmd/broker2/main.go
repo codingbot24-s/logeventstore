@@ -54,8 +54,6 @@ func read_cluster_metadata(filename string) (int, error) {
 		return 0, fmt.Errorf("error unmarshalling: %w", err)
 	}	
 		
-				
-	// TODO: we need to check is then node id of this node == leaderid then this node is the leader
 	// returing the clusterMap pointer
 	
 

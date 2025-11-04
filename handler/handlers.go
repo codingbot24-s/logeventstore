@@ -203,3 +203,28 @@ func CreatePartitionInTopic(c *gin.Context) {
 	})
 
 }
+
+
+type Replication struct {
+	TopicName string `json:"topicname" binding:"required"`
+	Partition int `json:"partition" binding:"required"`
+	Offset int `json:"offset" binding:"required"`
+	Message string `json:"message" binding:"required"`
+}
+
+func Replicate(c *gin.Context) {
+	var req Replication
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+	
+
+	c.JSON(http.StatusOK,gin.H{
+		"status": "success",
+		"message": "message replicated successfully",
+	})
+}

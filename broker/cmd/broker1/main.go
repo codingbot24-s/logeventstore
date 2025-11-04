@@ -30,6 +30,7 @@ type Broker struct {
 
 // map of topic and topic is map of partition
 // with this we can correclty read the cluster metadata
+//TODO: we need to create a broker structer with this map data
 type clusterMap map[string]map[string]Partition
 
 func read_cluster_metadata(filename string) (int, error) {
@@ -53,17 +54,10 @@ func read_cluster_metadata(filename string) (int, error) {
 		return 0, fmt.Errorf("error unmarshalling: %w", err)
 	}	
 		
-				
-	// TODO: we need to check is then node id of this node == leaderid then this node is the leader
-	// returing the clusterMap pointer
-	
-
 	return c["test_topic"]["0"].LeaderID, nil
 }
 
 func readBrokerConfig(filename string) (int, error) {
-	// how to open a file from cmd dir
-
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
 		return 0, fmt.Errorf("error opening file: %w", err)
