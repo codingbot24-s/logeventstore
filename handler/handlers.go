@@ -56,40 +56,52 @@ type writeMessageReq struct {
 	Key       string `json:"key" binding:"required"`
 	Message   string `json:"message" binding:"required"`
 }
-
+// TODO: write message It reads cluster_meta.json to find the leader broker for the topic/partition.	
+// TODO: we need to read the broker config to find the port of the leader broker
 func WriteMessage(c *gin.Context) {
-	var req writeMessageReq
-	if err := c.BindJSON(&req); err != nil {
+	_,err := helper.Read_cluster_metadata("./broker/cluster_meta.json")	
+
+	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
+			"error":   "error in reading cluster metadata",
 			"details": err.Error(),
 		})
-		return
-	}
-	// find the topic in the map
-	topic, ok := topicMap[req.TopicName]
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid topic name",
-			"details": "Topic does not exist",
-		})
-		return
-	}
-	// write the message to the partition
-	if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to write message",
-			"details": err.Error(),
-		})
-		return
 	}
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "Message written successfully",
-		"topic":   req.TopicName,
-		"key":     req.Key,
-	})
+	
+
+	// var req writeMessageReq
+	// if err := c.BindJSON(&req); err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{
+	// 		"error":   "Invalid request format",
+	// 		"details": err.Error(),
+	// 	})
+	// 	return
+	// }
+	// // find the topic in the map
+	// topic, ok := topicMap[req.TopicName]
+	// if !ok {
+	// 	c.JSON(http.StatusBadRequest, gin.H{
+	// 		"error":   "Invalid topic name",
+	// 		"details": "Topic does not exist",
+	// 	})
+	// 	return
+	// }
+	// // write the message to the partition
+	// if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
+	// 	c.JSON(http.StatusInternalServerError, gin.H{
+	// 		"error":   "Failed to write message",
+	// 		"details": err.Error(),
+	// 	})
+	// 	return
+	// }
+
+	// c.JSON(http.StatusOK, gin.H{
+	// 	"status":  "success",
+	// 	"message": "Message written successfully",
+	// 	"topic":   req.TopicName,
+	// 	"key":     req.Key,
+	// })
 }
 
 type consumeReq struct {

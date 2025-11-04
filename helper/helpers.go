@@ -1,6 +1,8 @@
 package helper
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"hash/crc32"
 	"io"
@@ -24,6 +26,7 @@ type Message struct {
 	Hash    int
 	Message string
 }
+
 // create a new logfile return the * of struct
 func NewLogFile(fname string) (*LogFile, error) {
 	file, err := os.OpenFile(fname, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
@@ -95,7 +98,7 @@ func (t *Topic) WriteIntoPartition(key string, message string) error {
 		return err
 	}
 
-	err = t.partitions[part].WriteIntoLogFile(message);
+	err = t.partitions[part].WriteIntoLogFile(message)
 	if err != nil {
 		return err
 	}
@@ -133,7 +136,7 @@ func (t *Topic) CloseP() error {
 // TODO: message offset done now we need to consume it with offset
 // logfile write
 
-//TODO: we cann implement the write worker pool 
+//TODO: we cann implement the write worker pool
 
 func (l *LogFile) WriteIntoLogFile(str string) error {
 	if l.file == nil {
@@ -227,7 +230,88 @@ func (l *LogFile) Close() error {
 }
 
 // TODO: impl add partition then update the ring move affected keys and message to new partition and verify rebalancing
-// TODO: move the affected keys -> messages to new partition 
-// add partition to the topic done
-// clear message appending done
-// message offset tracking done
+// TODO: add partition to the topic done
+
+
+// READ CLUSTER META
+type Peer struct {
+	NodeID int `json:"nodeID"`
+	Port   int `json:"port"`
+}
+
+type Partition struct {
+	LeaderID int   `json:"leaderID"`
+	Replicas []int `json:"replicas"`
+}
+type BrokerTopic struct {
+	Partitions map[string]Partition
+}
+
+type Broker struct {
+	NodeID int    `json:"nodeID"`
+	Port   int    `json:"port"`
+	Peers  []Peer `json:"peers"`
+	Topics map[string]BrokerTopic
+}
+
+
+type clusterMap map[string]map[string]Partition
+// currently returning the leader id of the topic
+func Read_cluster_metadata(filename string) (int, error) {
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
+	if err != nil {
+		return 0, fmt.Errorf("error opening file: %w", err)
+	}
+	defer f.Close()
+	data := make([]byte, 1024)
+	_, err = f.Read(data)
+	if err != nil && err != io.EOF {
+		return 0, fmt.Errorf("error reading file: %w", err)
+	}
+
+	trimmed_data := bytes.Trim(data, "\x00")
+
+	// Marshal the data into a clusterMap
+	var c clusterMap
+	err = json.Unmarshal(trimmed_data, &c)
+	if err != nil {
+		return 0, fmt.Errorf("error unmarshalling: %w", err)
+	}
+
+	return c["test_topic"]["0"].LeaderID, nil
+}
+
+
+
+func ReadBrokerConfig(filename string) (int, error) {
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
+	if err != nil {
+		return 0, fmt.Errorf("error opening file: %w", err)
+	}
+
+	data := make([]byte, 1023)
+	_, err = f.Read(data)
+	if err != nil && err != io.EOF {
+		return 0, fmt.Errorf("error reading file: %w", err)
+	}
+
+	trimmed_data := bytes.Trim(data, "\x00")
+
+	var b Broker
+	err = json.Unmarshal(trimmed_data, &b)
+
+	if err != nil {
+		return 0, fmt.Errorf("error unmarshaling json %w", err)
+	}
+
+	return b.NodeID, nil
+}
+
+func CheckLeader(lId, nodeId int) bool {
+	if lId == nodeId {
+		return true
+	}
+	return false
+}
+
+
