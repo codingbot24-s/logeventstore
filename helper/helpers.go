@@ -7,7 +7,6 @@ import (
 	"hash/crc32"
 	"io"
 	"log"
-	"maps"
 	"os"
 	"sort"
 	"sync"
@@ -254,89 +253,106 @@ type Broker struct {
 	Topics map[string]BrokerTopic
 }
 
-func ReadConfig(filename string) error {
+// How this works ioso we first read the config file and then read the cluster metadata file and return the data then we load the data in diffrent structer and then we laod it in the broker struct and the nreturn the structer
+func CreateBroker(configFileName, clusterMetaFileName string) (*Broker, error) {
+	// configdata in bytes
+	configData, err := ReadConfigAndGetTheConfigData(configFileName)
+	if err != nil {
+		return nil, fmt.Errorf("error reading config file: %w", err)
+	}
+	// clustermetadata in bytes
+	clusterMetaData, err := ReadClusterMetadataAndGetTheClusterMetadataData(clusterMetaFileName)
+	if err != nil {
+		return nil, fmt.Errorf("error reading cluster metadata: %w", err)
+	}
+
+	config, err := LoadConfig(configData)
+	if err != nil {
+		return nil, fmt.Errorf("error loading config file: %w", err)
+	}
+	clusterMeta, err := LoadClusterMetadata(clusterMetaData)
+	if err != nil {
+		return nil, fmt.Errorf("error loading cluster metadata: %w", err)
+	}
+
+	return &Broker{
+		NodeID: config.NodeID,
+		Port:   config.Port,
+		Peers:  config.Peers,
+		Topics: *clusterMeta,
+	}, nil
+}
+
+func ReadConfigAndGetTheConfigData(filename string) ([]byte, error) {
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
-		return fmt.Errorf("error opening file: %w", err)
+		return nil, fmt.Errorf("error opening file: %w", err)
 	}
 	defer f.Close()
 	data := make([]byte, 1024)
 	_, err = f.Read(data)
 	if err != nil && err != io.EOF {
-		return fmt.Errorf("error reading file: %w", err)
+		return nil, fmt.Errorf("error reading file: %w", err)
 	}
-
+	// data we need to parse into the config func
 	trimmedData := bytes.Trim(data, "\x00")
 
-	b := &Broker{}
-	err = b.LoadConfig(trimmedData)
+	return trimmedData, nil
 
-	if err != nil {
-		return fmt.Errorf("error loading config file: %w", err)
-	}
-
-	return nil
 }
 
-func ReadClusterMetadata(filename string) error {
+func ReadClusterMetadataAndGetTheClusterMetadataData(filename string) ([]byte, error) {
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
 	if err != nil {
-		return fmt.Errorf("error opening file: %w", err)
+		return nil, fmt.Errorf("error opening file: %w", err)
 	}
 	defer f.Close()
 	data := make([]byte, 1024)
 	_, err = f.Read(data)
 	if err != nil && err != io.EOF {
-		return fmt.Errorf("error reading file: %w", err)
+		return nil, fmt.Errorf("error reading file: %w", err)
 	}
+	//data we need to parse into the cluster func
 	trimmedData := bytes.Trim(data, "\x00")
-	b := &Broker{}
-	if err := b.LoadClusterMetadata(trimmedData); err != nil {
-		return fmt.Errorf("error loading cluster metadata: %w", err)
-	}
 
-	return nil
+	return trimmedData, nil
 }
 
-func (b *Broker) LoadConfig(configData []byte) error {
+// return the config data
+type configFile struct {
+	NodeID int    `json:"nodeID"`
+	Port   int    `json:"port"`
+	Peers  []Peer `json:"peers"`
+}
 
-	type configFile struct {
-		NodeID int    `json:"nodeID"`
-		Port   int    `json:"port"`
-		Peers  []Peer `json:"peers"`
-	}
+// get the config data other then topics
+func LoadConfig(configData []byte) (*configFile, error) {
+
 	var c configFile
 	err := json.Unmarshal(configData, &c)
 	if err != nil {
-		return fmt.Errorf("error unmarshalling config file: %w", err)
+		return nil, fmt.Errorf("error unmarshalling config file: %w", err)
 	}
 
-	b.NodeID = c.NodeID
-	b.Port = c.Port
-	b.Peers = c.Peers
+	return &c, nil
 
-	if b.Topics == nil {
-		b.Topics = make(map[string]BrokerTopic)
-	}
-
-	return nil
 }
 
-func (b *Broker) LoadClusterMetadata(metadataData []byte) error {
-	type ClusterMetadata struct {
-		Topics map[string]BrokerTopic `json:"topics"`
-	}
+type ClusterMetadata struct {
+	Topics map[string]BrokerTopic `json:"topics"`
+}
+
+// would return the the topics
+func LoadClusterMetadata(metadataData []byte) (*map[string]BrokerTopic, error) {
 
 	var metadata ClusterMetadata
 	if err := json.Unmarshal(metadataData, &metadata); err != nil {
-		return fmt.Errorf("failed to unmarshal cluster metadata: %w", err)
+		return nil, fmt.Errorf("failed to unmarshal cluster metadata: %w", err)
 	}
 
-	if b.Topics == nil {
-		b.Topics = make(map[string]BrokerTopic)
-	}
-	maps.Copy(b.Topics, metadata.Topics)
-
-	return nil
+	// return the topics
+	return &metadata.Topics, nil
 }
-// TODO: we need to check the leader id 
+
+// TODO: we need to check the who is leader and get the port for that leader
+

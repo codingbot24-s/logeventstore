@@ -60,7 +60,7 @@ type writeMessageReq struct {
 // TODO: write message It reads cluster_meta.json to find the leader broker for the topic/partition.
 // TODO: we need to read the broker config to find the port of the leader broker currently we are getting the id
 func WriteMessage(c *gin.Context) {
-	err := helper.ReadClusterMetadata("./broker/cluster_meta.json")
+	_,err := helper.CreateBroker("./broker/broker1.json", "./broker/cluster_meta.json")
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
