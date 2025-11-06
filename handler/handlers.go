@@ -62,7 +62,7 @@ type writeMessageReq struct {
 func WriteMessage(c *gin.Context) {
 	b1, err := helper.CreateBroker("./broker/broker1.json", "./broker/cluster_meta.json")
 	// we can make this dyanmic
-
+	b1.GetLeader("test_topic","0")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "error creating broker",
