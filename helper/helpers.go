@@ -351,7 +351,15 @@ func LoadClusterMetadata(metadataData []byte) (*map[string]map[string]Partition,
 }
 
 // TODO: we need to check the who is leader for given topic and get the port for that leader
+// 1. we can pass all the broker in function and find out who is leader and return its port
+//2. we can check one by one which one is leader by calling a method on b this is problamatic how we would now which one has returned the nodeid ?
+// 3. something better
+func (b *Broker) IsLeader (topic,partition string) (int,error) {
+	// TODO: Some error here
+	if b.Topics[topic][partition].LeaderID == b.NodeID {
+		return b.Port,nil
+	}
+	return 0,fmt.Errorf("cant find the port for leader")
+}
 
-// func (b *Broker ) GetLeader (topic, partition string) int {
-// 	return b.Topics[topic].Partitions[partition].LeaderID
-// }
+

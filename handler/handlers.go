@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -60,23 +62,37 @@ type writeMessageReq struct {
 // TODO: write message It reads cluster_meta.json to find the leader broker for the topic/partition.
 // TODO: we need to read the broker config to find the port of the leader broker currently we are getting the id
 func WriteMessage(c *gin.Context) {
-	//TODO: solve this B1 is NIL
-	_, err := helper.CreateBroker("./broker/cmd/broker1/broker1.json", "./broker/cluster_meta.json")
-	// we can make this dyanmic
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "error creating broker",
-			"details": err.Error(),
-		})
+	brokerSlice := make([]*helper.Broker, 10)
+	for i := 1; i <= 2; i++ {
+		confFile := fmt.Sprintf("./broker/cmd/broker%d/broker%d.json", i, i)
+		b, err := helper.CreateBroker(confFile, "./broker/cluster_meta.json")
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"Error":  "error creating in broker",
+				"detail": err.Error(),
+			})
+
+			return
+		}
+
+		brokerSlice = append(brokerSlice, b)
 	}
 
-	_, err = helper.CreateBroker("./broker/cmd/broker2/broker2.json", "./broker/cluster_meta.json")
+	port := 0
 
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "error creating broker",
-			"details": err.Error(),
-		})
+	for _, b := range brokerSlice {
+		p, err := b.IsLeader("test_topic", "0")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"Error":  "error finding port",
+				"detail": err.Error(),
+			})
+
+			return
+		}
+		port = p
+
 	}
 
 	var req writeMessageReq
@@ -88,7 +104,7 @@ func WriteMessage(c *gin.Context) {
 		return
 	}
 
-	// jsonData,err := json.Marshal(req)
+	jsonData, err := json.Marshal(req)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Invalid request format",
@@ -96,28 +112,27 @@ func WriteMessage(c *gin.Context) {
 		})
 	}
 
-	// TODO: send the http request
-	// nodeID := b1.GetLeader("test_topic", "0")
-	// // send the post request on this node id to /produce
-	// addr := fmt.Sprintf("http://localhost:%d/produce",nodeID)
-	// fmt.Println("addr is ",addr)
-	// resp,err := http.Post(addr,"Content-Type application/json",bytes.NewBuffer(jsonData))
+	//TODO: send the http request
+	// send the post request on this node id to /produce
+	addr := fmt.Sprintf("http://localhost:%d/produce", port)
+	fmt.Println("addr is ", addr)
+	resp, err := http.Post(addr, "Content-Type application/json", bytes.NewBuffer(jsonData))
 
-	// if err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{
-	// 		"error":   "Error sending post req",
-	// 		"details" : err.Error(),
-	// 	})
-	// }
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Error sending post req",
+			"details": err.Error(),
+		})
+	}
 
-	// defer resp.Body.Close()
+	defer resp.Body.Close()
 
-	// if resp.StatusCode == 200{
-	// 	c.JSON(http.StatusOK,gin.H{
-	// 		"status":  "success",
-	// 		"message": "sended request successfully",
-	// 	})
-	// }
+	if resp.StatusCode == 200 {
+		c.JSON(http.StatusOK, gin.H{
+			"status":  "success",
+			"message": "sended request successfully",
+		})
+	}
 
 	// // find the topic in the map
 	// topic, ok := topicMap[req.TopicName]
