@@ -1,6 +1,8 @@
 package handlers
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
@@ -60,9 +62,10 @@ type writeMessageReq struct {
 // TODO: write message It reads cluster_meta.json to find the leader broker for the topic/partition.
 // TODO: we need to read the broker config to find the port of the leader broker currently we are getting the id
 func WriteMessage(c *gin.Context) {
-	b1, err := helper.CreateBroker("./broker/broker1.json", "./broker/cluster_meta.json")
+	b1, err := helper.CreateBroker("./broker/cmd/broker1/broker1.json", "./broker/cluster_meta.json")
+	fmt.Println("broker is ",b1)
+
 	// we can make this dyanmic
-	b1.GetLeader("test_topic","0")
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "error creating broker",
@@ -70,7 +73,7 @@ func WriteMessage(c *gin.Context) {
 		})
 	}
 
-	_, err = helper.CreateBroker("./broker/broker2.json", "./broker/cluster_meta.json")
+	_, err = helper.CreateBroker("./broker/cmd/broker2/broker2.json", "./broker/cluster_meta.json")
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -78,19 +81,48 @@ func WriteMessage(c *gin.Context) {
 			"details": err.Error(),
 		})
 	}
+	
+	var req writeMessageReq
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	jsonData,err := json.Marshal(req)
+	if err != nil {
+	c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details" : err.Error(),
+		})
+	}	
+
 	// TODO: send the http request
-	// nodeID := b1.GetLeader("test_topic", "0")
+	nodeID := b1.GetLeader("test_topic", "0")
 	// send the post request on this node id to /produce
-	// addr := fmt.Sprintf("http://localhost:%s/createpartition", nodeID)
+	addr := fmt.Sprintf("http://localhost:%d/produce",nodeID)
+	fmt.Println("addr is ",addr)
+	resp,err := http.Post(addr,"Content-Type application/json",bytes.NewBuffer(jsonData))
+	
+		
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Error sending post req",
+			"details" : err.Error(),
+		})
+	}
 
-	// var req writeMessageReq
-	// if err := c.BindJSON(&req); err != nil {
-	// 	c.JSON(http.StatusBadRequest, gin.H{
-	// 		"error":   "Invalid request format",
-	// 		"details": err.Error(),
-	// 	})
-	// 	return
-	// }
+	defer resp.Body.Close()
+
+	if resp.StatusCode == 200{
+		c.JSON(http.StatusOK,gin.H{
+			"status":  "success",
+			"message": "sended request successfully",	
+		})
+	}
+
 	// // find the topic in the map
 	// topic, ok := topicMap[req.TopicName]
 	// if !ok {
