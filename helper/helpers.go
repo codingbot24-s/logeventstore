@@ -242,15 +242,12 @@ type Partition struct {
 	LeaderID int   `json:"leaderID"`
 	Replicas []int `json:"replicas"`
 }
-type BrokerTopic struct {
-	Partitions map[string]Partition
-}
 
 type Broker struct {
 	NodeID int    `json:"nodeID"`
 	Port   int    `json:"port"`
 	Peers  []Peer `json:"peers"`
-	Topics map[string]BrokerTopic
+	Topics map[string]map[string]Partition
 }
 
 // How this works ioso we first read the config file and then read the cluster metadata file and return the data then we load the data in diffrent structer and then we laod it in the broker struct and the nreturn the structer
@@ -260,12 +257,10 @@ func CreateBroker(configFileName, clusterMetaFileName string) (*Broker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error reading config file: %w", err)
 	}
-	// clustermetadata in bytes
 	clusterMetaData, err := ReadClusterMetadataAndGetTheClusterMetadataData(clusterMetaFileName)
 	if err != nil {
 		return nil, fmt.Errorf("error reading cluster metadata: %w", err)
 	}
-
 	config, err := LoadConfig(configData)
 	if err != nil {
 		return nil, fmt.Errorf("error loading config file: %w", err)
@@ -296,7 +291,6 @@ func ReadConfigAndGetTheConfigData(filename string) ([]byte, error) {
 	}
 	// data we need to parse into the config func
 	trimmedData := bytes.Trim(data, "\x00")
-
 	return trimmedData, nil
 
 }
@@ -308,10 +302,12 @@ func ReadClusterMetadataAndGetTheClusterMetadataData(filename string) ([]byte, e
 	}
 	defer f.Close()
 	data := make([]byte, 1024)
+
 	_, err = f.Read(data)
 	if err != nil && err != io.EOF {
 		return nil, fmt.Errorf("error reading file: %w", err)
 	}
+
 	//data we need to parse into the cluster func
 	trimmedData := bytes.Trim(data, "\x00")
 
@@ -339,11 +335,11 @@ func LoadConfig(configData []byte) (*configFile, error) {
 }
 
 type ClusterMetadata struct {
-	Topics map[string]BrokerTopic `json:"topics"`
+	Topics map[string]map[string]Partition
 }
 
 // would return the the topics
-func LoadClusterMetadata(metadataData []byte) (*map[string]BrokerTopic, error) {
+func LoadClusterMetadata(metadataData []byte) (*map[string]map[string]Partition, error) {
 
 	var metadata ClusterMetadata
 	if err := json.Unmarshal(metadataData, &metadata); err != nil {
@@ -356,8 +352,6 @@ func LoadClusterMetadata(metadataData []byte) (*map[string]BrokerTopic, error) {
 
 // TODO: we need to check the who is leader for given topic and get the port for that leader
 
-func (b *Broker ) GetLeader (topic, partition string) int {
-	return b.Topics[topic].Partitions[partition].LeaderID
-}
-
-
+// func (b *Broker ) GetLeader (topic, partition string) int {
+// 	return b.Topics[topic].Partitions[partition].LeaderID
+// }
