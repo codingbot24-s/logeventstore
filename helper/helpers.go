@@ -354,5 +354,10 @@ func LoadClusterMetadata(metadataData []byte) (*map[string]BrokerTopic, error) {
 	return &metadata.Topics, nil
 }
 
-// TODO: we need to check the who is leader and get the port for that leader
+// TODO: we need to check the who is leader for given topic and get the port for that leader
+
+func (b *Broker ) GetLeader (topic, partition string) int {
+	return b.Topics[topic].Partitions[partition].LeaderID
+}
+
 

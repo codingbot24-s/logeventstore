@@ -60,14 +60,28 @@ type writeMessageReq struct {
 // TODO: write message It reads cluster_meta.json to find the leader broker for the topic/partition.
 // TODO: we need to read the broker config to find the port of the leader broker currently we are getting the id
 func WriteMessage(c *gin.Context) {
-	_,err := helper.CreateBroker("./broker/broker1.json", "./broker/cluster_meta.json")
+	b1, err := helper.CreateBroker("./broker/broker1.json", "./broker/cluster_meta.json")
+	// we can make this dyanmic
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "error in reading cluster metadata",
+			"error":   "error creating broker",
 			"details": err.Error(),
 		})
 	}
+
+	_, err = helper.CreateBroker("./broker/broker2.json", "./broker/cluster_meta.json")
+
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "error creating broker",
+			"details": err.Error(),
+		})
+	}
+	// TODO: send the http request
+	// nodeID := b1.GetLeader("test_topic", "0")
+	// send the post request on this node id to /produce
+	// addr := fmt.Sprintf("http://localhost:%s/createpartition", nodeID)
 
 	// var req writeMessageReq
 	// if err := c.BindJSON(&req); err != nil {
