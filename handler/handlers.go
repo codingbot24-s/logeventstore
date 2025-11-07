@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 
@@ -79,20 +80,15 @@ func WriteMessage(c *gin.Context) {
 		brokerSlice = append(brokerSlice, b)
 	}
 
-	port := 0
-	for _,b := range brokerSlice {
-		p, err := b.IsLeader("test_topic", "0")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"Error":  "error finding port",
-				"detail": err.Error(),
-			})
-
-			return
-		}
-		port = p
+	port, err := helper.FindLeaderPort(brokerSlice, "test_topic", "0")
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"Error":  "leader not found",
+			"detail": err.Error(),
+		})
+		return
 	}
-
+	fmt.Println("port is ", port)
 	var req writeMessageReq
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -114,21 +110,37 @@ func WriteMessage(c *gin.Context) {
 	// send the post request on this node id to /produce
 	addr := fmt.Sprintf("http://localhost:%d/produce", port)
 	fmt.Println("addr is ", addr)
-	resp, err := http.Post(addr, "Content-Type application/json", bytes.NewBuffer(jsonData))
 
+	resp, err := http.Post(addr, "application/json", bytes.NewBuffer(jsonData))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "Error sending post req",
 			"details": err.Error(),
 		})
+		return
 	}
-
 	defer resp.Body.Close()
 
-	if resp.StatusCode == 200 {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Error reading response",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if resp.StatusCode == http.StatusOK {
 		c.JSON(http.StatusOK, gin.H{
-			"status":  "success",
-			"message": "sended request successfully",
+			"status":   "success",
+			"message":  "sent request successfully",
+			"response": string(body),
+		})
+	} else {
+		c.JSON(http.StatusBadGateway, gin.H{
+			"error":    "Request failed",
+			"status":   resp.StatusCode,
+			"response": string(body),
 		})
 	}
 

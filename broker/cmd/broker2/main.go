@@ -13,7 +13,7 @@ func main() {
 	r.POST("/produce", Produce)
 
 	fmt.Println("starting the broker1 server on 8082")
-	r.Run(":8081")
+	r.Run(":8082")
 }
 
 type ProduceStruct struct {

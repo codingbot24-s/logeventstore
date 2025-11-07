@@ -12,8 +12,8 @@ func main() {
 	r := gin.Default()
 	r.POST("/produce", Produce)
 
-	fmt.Println("starting the broker1 server on 8082")
-	r.Run(":8082")
+	fmt.Println("starting the broker1 server on 8081")
+	r.Run(":8081")
 }
 
 type ProduceStruct struct {
@@ -23,12 +23,14 @@ type ProduceStruct struct {
 }
 
 func Produce(c *gin.Context) {
-	var p ProduceStruct
-	err := c.BindJSON(&p)
-	if err != nil {
-		c.JSON(400, gin.H{"error": err.Error()})
-		return
-	}
+	//var p ProduceStruct
+	// becaude of diffremt struct we cant bind that json we need to fix this
+	// fmt.Println("struct is ",p)
+	// err := c.BindJSON(&p)
+	// if err != nil {
+	// 	c.JSON(400, gin.H{"error": err.Error()})
+	// 	return
+	// }
 
-	fmt.Println("received message", p)
+	fmt.Println("received produce request ...")
 }

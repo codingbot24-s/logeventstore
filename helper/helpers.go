@@ -352,16 +352,50 @@ func LoadClusterMetadata(metadataData []byte) (*map[string]map[string]Partition,
 
 // TODO: we need to check the who is leader for given topic and get the port for that leader
 // 1. we can pass all the broker in function and find out who is leader and return its port
-//2. we can check one by one which one is leader by calling a method on b this is problamatic how we would now which one has returned the nodeid ?
+// 2. we can check one by one which one is leader by calling a method on b this is problamatic how we would now which one has returned the nodeid ?
 // 3. something better
-func (b *Broker) IsLeader (topic,partition string) (int,error) {
-	// TODO: Some error here	
-	port := 8082
-	if b.Topics[topic][partition].LeaderID == b.NodeID {	
-		port = b.Port
-	}
-	
-	return port,nil
+type LeaderInfo struct {
+    IsLeader bool
+    Port     int
+    LeaderID int
 }
 
+func (b *Broker) GetLeaderInfo(topic, partition string) (*LeaderInfo, error) {
+    
+    topicPartitions, exists := b.Topics[topic]
+    if !exists {
+        return nil, fmt.Errorf("topic '%s' not found", topic)
+    }
+    
+   
+    partitionData, exists := topicPartitions[partition]
+    if !exists {
+        return nil, fmt.Errorf("partition '%s' not found in topic '%s'", partition, topic)
+    }
+    
+    info := &LeaderInfo{
+        IsLeader: partitionData.LeaderID == b.NodeID,
+        LeaderID: partitionData.LeaderID,
+    }
+    
+    if info.IsLeader {
+        info.Port = b.Port
+    }
+    
+    return info, nil
+}
 
+func FindLeaderPort(brokerSlice []*Broker, topic, partition string) (int, error) {
+    for _, b := range brokerSlice {
+        leaderInfo, err := b.GetLeaderInfo(topic, partition)
+        if err != nil {
+            return 0, err
+        }
+        
+        if leaderInfo.IsLeader {
+            return leaderInfo.Port, nil
+        }
+    }
+    
+    return 0, fmt.Errorf("no leader found for topic '%s' partition '%s'", topic, partition)
+}
