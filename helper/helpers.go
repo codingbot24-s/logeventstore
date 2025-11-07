@@ -356,11 +356,12 @@ func LoadClusterMetadata(metadataData []byte) (*map[string]map[string]Partition,
 // 3. something better
 func (b *Broker) IsLeader (topic,partition string) (int,error) {
 	// TODO: Some error here	
-	fmt.Println("b is from is leader",b)
-	if b.Topics[topic][partition].LeaderID == b.NodeID {
-		return b.Port,nil
+	port := 8082
+	if b.Topics[topic][partition].LeaderID == b.NodeID {	
+		port = b.Port
 	}
-	return 0,fmt.Errorf("cant find the port for leader")
+	
+	return port,nil
 }
 
 

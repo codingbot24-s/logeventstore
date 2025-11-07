@@ -77,22 +77,20 @@ func WriteMessage(c *gin.Context) {
 		}
 
 		brokerSlice = append(brokerSlice, b)
-		fmt.Println("brokerSlice is from write message handdler", brokerSlice)	
 	}
 
 	port := 0
-	for _, b := range brokerSlice {
-		fmt.Println("broker is from write message handdler", b)
-		// p, err := b.IsLeader("test_topic", "0")
-		// if err != nil {
-		// 	c.JSON(http.StatusInternalServerError, gin.H{
-		// 		"Error":  "error finding port",
-		// 		"detail": err.Error(),
-		// 	})
+	for _,b := range brokerSlice {
+		p, err := b.IsLeader("test_topic", "0")
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, gin.H{
+				"Error":  "error finding port",
+				"detail": err.Error(),
+			})
 
-		// 	return
-		// }
-		// port = p
+			return
+		}
+		port = p
 	}
 
 	var req writeMessageReq
