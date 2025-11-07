@@ -62,7 +62,7 @@ type writeMessageReq struct {
 // TODO: write message It reads cluster_meta.json to find the leader broker for the topic/partition.
 // TODO: we need to read the broker config to find the port of the leader broker currently we are getting the id
 func WriteMessage(c *gin.Context) {
-	brokerSlice := make([]*helper.Broker, 10)
+	brokerSlice := make([]*helper.Broker, 0)
 	for i := 1; i <= 2; i++ {
 		confFile := fmt.Sprintf("./broker/cmd/broker%d/broker%d.json", i, i)
 		b, err := helper.CreateBroker(confFile, "./broker/cluster_meta.json")
@@ -77,22 +77,22 @@ func WriteMessage(c *gin.Context) {
 		}
 
 		brokerSlice = append(brokerSlice, b)
+		fmt.Println("brokerSlice is from write message handdler", brokerSlice)	
 	}
 
 	port := 0
-
 	for _, b := range brokerSlice {
-		p, err := b.IsLeader("test_topic", "0")
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"Error":  "error finding port",
-				"detail": err.Error(),
-			})
+		fmt.Println("broker is from write message handdler", b)
+		// p, err := b.IsLeader("test_topic", "0")
+		// if err != nil {
+		// 	c.JSON(http.StatusInternalServerError, gin.H{
+		// 		"Error":  "error finding port",
+		// 		"detail": err.Error(),
+		// 	})
 
-			return
-		}
-		port = p
-
+		// 	return
+		// }
+		// port = p
 	}
 
 	var req writeMessageReq

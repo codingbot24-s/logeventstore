@@ -355,7 +355,8 @@ func LoadClusterMetadata(metadataData []byte) (*map[string]map[string]Partition,
 //2. we can check one by one which one is leader by calling a method on b this is problamatic how we would now which one has returned the nodeid ?
 // 3. something better
 func (b *Broker) IsLeader (topic,partition string) (int,error) {
-	// TODO: Some error here
+	// TODO: Some error here	
+	fmt.Println("b is from is leader",b)
 	if b.Topics[topic][partition].LeaderID == b.NodeID {
 		return b.Port,nil
 	}
