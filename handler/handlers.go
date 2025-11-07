@@ -14,6 +14,9 @@ import (
 
 // to create a topic send a data like this struct
 // TODO: Messages are not going in the new partitions only going in partitions that have been created with produce in { creation Time } after taht messages are only going in that Npartitions SOLVE THIS
+
+
+// TODO: send this type of request on produce to leader broker
 type createTopicReq struct {
 	TopicName          string `json:"topicname" binding:"required"`
 	NumberofPartitions int    `json:"Npartitions" binding:"min=1"`
@@ -23,8 +26,8 @@ type createTopicReq struct {
 // we can create a topic map which will store all the topcis and we can use it to read from the topic
 // create a map to store all the topics
 var topicMap = make(map[string]*helper.Topic)
-
-func Produce(c *gin.Context) {
+// controller will find the leader and route the request to the correct leader broker
+func RouteProduce(c *gin.Context) {
 	var req createTopicReq
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -33,25 +36,48 @@ func Produce(c *gin.Context) {
 		})
 		return
 	}
-	// creating a topic
-	topic, err := helper.NewTopic(req.TopicName, req.NumberofPartitions)
+	// send the post request to leader broker with this request struct to create a topic
+
+	jsonByte,err := json.Marshal(req)		
+
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{
-			"error":   "Failed to create topic",
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
 			"details": err.Error(),
 		})
 		return
 	}
-	// insert a topic in the map
-	topicMap[req.TopicName] = topic
-	// build the ring with the number of nodes
-	topic.BuildRing(req.NumberofNodes)
 
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "Topic created successfully",
-		"topic":   req.TopicName,
-	})
+	resp,err := http.Post("http://localhost:8081/produce","application/json",bytes.NewBuffer(jsonByte))
+	
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "error sending post req",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Error reading response",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	if resp.StatusCode == http.StatusOK {
+		c.JSON(http.StatusOK, gin.H{
+			"status":   "success",
+			"message":  "sent request successfully",
+			"response": string(body),
+		})
+
+		return
+	}
 }
 
 type writeMessageReq struct {
@@ -60,9 +86,8 @@ type writeMessageReq struct {
 	Message   string `json:"message" binding:"required"`
 }
 
-// TODO: write message It reads cluster_meta.json to find the leader broker for the topic/partition.
-// TODO: we need to read the broker config to find the port of the leader broker currently we are getting the id
 func WriteMessage(c *gin.Context) {
+	//TODO:  we need to define this slice somewhere else so every handler could access it 
 	brokerSlice := make([]*helper.Broker, 0)
 	for i := 1; i <= 2; i++ {
 		confFile := fmt.Sprintf("./broker/cmd/broker%d/broker%d.json", i, i)
@@ -106,7 +131,6 @@ func WriteMessage(c *gin.Context) {
 		})
 	}
 
-	//TODO: send the http request
 	// send the post request on this node id to /produce
 	addr := fmt.Sprintf("http://localhost:%d/produce", port)
 	fmt.Println("addr is ", addr)
@@ -143,31 +167,6 @@ func WriteMessage(c *gin.Context) {
 			"response": string(body),
 		})
 	}
-
-	// // find the topic in the map
-	// topic, ok := topicMap[req.TopicName]
-	// if !ok {
-	// 	c.JSON(http.StatusBadRequest, gin.H{
-	// 		"error":   "Invalid topic name",
-	// 		"details": "Topic does not exist",
-	// 	})
-	// 	return
-	// }
-	// // write the message to the partition
-	// if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
-	// 	c.JSON(http.StatusInternalServerError, gin.H{
-	// 		"error":   "Failed to write message",
-	// 		"details": err.Error(),
-	// 	})
-	// 	return
-	// }
-
-	// c.JSON(http.StatusOK, gin.H{
-	// 	"status":  "success",
-	// 	"message": "Message written successfully",
-	// 	"topic":   req.TopicName,
-	// 	"key":     req.Key,
-	// })
 }
 
 type consumeReq struct {

@@ -10,7 +10,7 @@ import (
 func main() {
 	r := gin.Default()
 	// will create a topic
-	r.POST("/topic", handlers.Produce)
+	r.POST("/topic", handlers.RouteProduce)
 	// will write a message to a topic
 	r.POST("/message", handlers.WriteMessage)
 	// will read a message from a topic
