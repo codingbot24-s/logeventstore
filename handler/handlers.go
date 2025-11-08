@@ -53,7 +53,7 @@ func RouteProduce(c *gin.Context) {
 	// TODO: we need this port to be dynamic by leader we need to get the leader from brokers slice
 	// we can create the broker slice here if
 
-	for i := 0; i < 2; i++ {
+	for i := 1; i < 2; i++ {
 		confFile := fmt.Sprintf("./broker/cmd/broker%d/broker%d.json", i, i)
 		_, err := helper.CreateBroker(confFile, "./broker/cluster_meta.json")
 

@@ -282,7 +282,7 @@ func CreateBroker(configFileName, clusterMetaFileName string) (*Broker, error) {
 	}
 	// now create will append the broker in slice then we can get the slice
 	BrokerSlice = append(BrokerSlice, b)
-
+	fmt.Println("len of broker slice is ",len(BrokerSlice))
 	return b,nil 
 }
 
@@ -409,7 +409,7 @@ func FindLeaderPort(brokerSlice []*Broker, topic, partition string) (int, error)
 func GetBrokerSlice() (*BrokerSliceType, error) {
 	// if brokerslice is nill then we dont need to return any thing but nil 
 	if len(BrokerSlice) == 0 {
-		return nil,fmt.Errorf("error slice is empty")
+		return nil,fmt.Errorf("error slice is empty create the broker first")
 	}
 	return &BrokerSlice, nil
 }
