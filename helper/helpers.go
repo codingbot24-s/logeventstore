@@ -10,6 +10,8 @@ import (
 	"os"
 	"sort"
 	"sync"
+
+	
 )
 
 // represent one partition
@@ -250,6 +252,9 @@ type Broker struct {
 	Topics map[string]map[string]Partition
 }
 
+// Global broker slice for accessing in the handlers
+type BrokerSliceType []*Broker
+var BrokerSlice = make(BrokerSliceType, 0)
 // How this works ioso we first read the config file and then read the cluster metadata file and return the data then we load the data in diffrent structer and then we laod it in the broker struct and the nreturn the structer
 func CreateBroker(configFileName, clusterMetaFileName string) (*Broker, error) {
 	// configdata in bytes
@@ -269,13 +274,16 @@ func CreateBroker(configFileName, clusterMetaFileName string) (*Broker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("error loading cluster metadata: %w", err)
 	}
-
-	return &Broker{
+	b := &Broker{
 		NodeID: config.NodeID,
 		Port:   config.Port,
 		Peers:  config.Peers,
 		Topics: *clusterMeta,
-	}, nil
+	}
+	// now create will append the broker in slice then we can get the slice
+	BrokerSlice = append(BrokerSlice, b)
+
+	return b,nil 
 }
 
 func ReadConfigAndGetTheConfigData(filename string) ([]byte, error) {
@@ -350,52 +358,58 @@ func LoadClusterMetadata(metadataData []byte) (*map[string]map[string]Partition,
 	return &metadata.Topics, nil
 }
 
-// TODO: we need to check the who is leader for given topic and get the port for that leader
-// 1. we can pass all the broker in function and find out who is leader and return its port
-// 2. we can check one by one which one is leader by calling a method on b this is problamatic how we would now which one has returned the nodeid ?
-// 3. something better
+
 type LeaderInfo struct {
-    IsLeader bool
-    Port     int
-    LeaderID int
+	IsLeader bool
+	Port     int
+	LeaderID int
 }
 
 func (b *Broker) GetLeaderInfo(topic, partition string) (*LeaderInfo, error) {
-    
-    topicPartitions, exists := b.Topics[topic]
-    if !exists {
-        return nil, fmt.Errorf("topic '%s' not found", topic)
-    }
-    
-   
-    partitionData, exists := topicPartitions[partition]
-    if !exists {
-        return nil, fmt.Errorf("partition '%s' not found in topic '%s'", partition, topic)
-    }
-    
-    info := &LeaderInfo{
-        IsLeader: partitionData.LeaderID == b.NodeID,
-        LeaderID: partitionData.LeaderID,
-    }
-    
-    if info.IsLeader {
-        info.Port = b.Port
-    }
-    
-    return info, nil
+
+	topicPartitions, exists := b.Topics[topic]
+	if !exists {
+		return nil, fmt.Errorf("topic '%s' not found", topic)
+	}
+
+	partitionData, exists := topicPartitions[partition]
+	if !exists {
+		return nil, fmt.Errorf("partition '%s' not found in topic '%s'", partition, topic)
+	}
+
+	info := &LeaderInfo{
+		IsLeader: partitionData.LeaderID == b.NodeID,
+		LeaderID: partitionData.LeaderID,
+	}
+
+	if info.IsLeader {
+		info.Port = b.Port
+	}
+
+	return info, nil
 }
 
 func FindLeaderPort(brokerSlice []*Broker, topic, partition string) (int, error) {
-    for _, b := range brokerSlice {
-        leaderInfo, err := b.GetLeaderInfo(topic, partition)
-        if err != nil {
-            return 0, err
-        }
-        
-        if leaderInfo.IsLeader {
-            return leaderInfo.Port, nil
-        }
-    }
-    
-    return 0, fmt.Errorf("no leader found for topic '%s' partition '%s'", topic, partition)
+	for _, b := range brokerSlice {
+		leaderInfo, err := b.GetLeaderInfo(topic, partition)
+		if err != nil {
+			return 0, err
+		}
+
+		if leaderInfo.IsLeader {
+			return leaderInfo.Port, nil
+		}
+	}
+
+	return 0, fmt.Errorf("no leader found for topic '%s' partition '%s'", topic, partition)
+}
+
+
+// we can use this to get the broker slice*
+func GetBrokerSlice() (*BrokerSliceType, error) {
+	// if brokerslice is nill then we dont need to return any thing but nil 
+	if len(BrokerSlice) == 0 {
+		return nil,fmt.Errorf("error slice is empty")
+	}
+	return &BrokerSlice, nil
 }

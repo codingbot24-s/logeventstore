@@ -1,4 +1,4 @@
-package handler
+package brokerHandler
 
 import (
 	"net/http"

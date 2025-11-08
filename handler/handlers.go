@@ -15,7 +15,6 @@ import (
 // to create a topic send a data like this struct
 // TODO: Messages are not going in the new partitions only going in partitions that have been created with produce in { creation Time } after taht messages are only going in that Npartitions SOLVE THIS
 
-
 // TODO: send this type of request on produce to leader broker
 type createTopicReq struct {
 	TopicName          string `json:"topicname" binding:"required"`
@@ -26,7 +25,10 @@ type createTopicReq struct {
 // we can create a topic map which will store all the topcis and we can use it to read from the topic
 // create a map to store all the topics
 var topicMap = make(map[string]*helper.Topic)
+
 // controller will find the leader and route the request to the correct leader broker
+//TODO:  test this produce route in postman is it working
+// THIS WILL CREATE THE LOG FILES IN THE LEADER BROKER DIR
 func RouteProduce(c *gin.Context) {
 	var req createTopicReq
 	if err := c.BindJSON(&req); err != nil {
@@ -37,8 +39,9 @@ func RouteProduce(c *gin.Context) {
 		return
 	}
 	// send the post request to leader broker with this request struct to create a topic
-
-	jsonByte,err := json.Marshal(req)		
+	// get the broker slice
+	// pass the broker slice to getleader to get the port
+	jsonByte, err := json.Marshal(req)
 
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -47,9 +50,42 @@ func RouteProduce(c *gin.Context) {
 		})
 		return
 	}
+	// TODO: we need this port to be dynamic by leader we need to get the leader from brokers slice
+	// we can create the broker slice here if
 
-	resp,err := http.Post("http://localhost:8081/produce","application/json",bytes.NewBuffer(jsonByte))
-	
+	for i := 0; i < 2; i++ {
+		confFile := fmt.Sprintf("./broker/cmd/broker%d/broker%d.json", i, i)
+		_, err := helper.CreateBroker(confFile, "./broker/cluster_meta.json")
+
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{
+				"error":   "error creating broker",
+				"details": err.Error(),
+			})
+			return
+		}
+
+	}
+	brokerSlice, err := helper.GetBrokerSlice()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "error getting broker slice",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	port, err := helper.FindLeaderPort(*brokerSlice, "test_topic", "0")
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"Error":  "leader not found",
+			"detail": err.Error(),
+		})
+		return
+	}
+	addr := fmt.Sprintf("http://localhost:%d/produce", port)
+	resp, err := http.Post(addr, "application/json", bytes.NewBuffer(jsonByte))
+
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "error sending post req",
@@ -85,27 +121,21 @@ type writeMessageReq struct {
 	Key       string `json:"key" binding:"required"`
 	Message   string `json:"message" binding:"required"`
 }
-
+// THIS WILL WRITE IN LEADER BROKER LOG FILE
 func WriteMessage(c *gin.Context) {
-	//TODO:  we need to define this slice somewhere else so every handler could access it 
-	brokerSlice := make([]*helper.Broker, 0)
-	for i := 1; i <= 2; i++ {
-		confFile := fmt.Sprintf("./broker/cmd/broker%d/broker%d.json", i, i)
-		b, err := helper.CreateBroker(confFile, "./broker/cluster_meta.json")
+	//TODO:  we need to define this slice somewhere else so every handler could access it for leader port
 
-		if err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{
-				"Error":  "error creating in broker",
-				"detail": err.Error(),
-			})
-
-			return
-		}
-
-		brokerSlice = append(brokerSlice, b)
+	// we can get the broker slice by this function
+	brokerSlice, err := helper.GetBrokerSlice()
+	if err != nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"Error":  "erorr getting broker slice",
+			"detail": err.Error(),
+		})
+		return
 	}
-
-	port, err := helper.FindLeaderPort(brokerSlice, "test_topic", "0")
+	// passs the broker slice here to get the leader port
+	port, err := helper.FindLeaderPort(*brokerSlice, "test_topic", "0")
 	if err != nil {
 		c.JSON(http.StatusNotFound, gin.H{
 			"Error":  "leader not found",
@@ -113,7 +143,6 @@ func WriteMessage(c *gin.Context) {
 		})
 		return
 	}
-	fmt.Println("port is ", port)
 	var req writeMessageReq
 	if err := c.BindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -132,7 +161,7 @@ func WriteMessage(c *gin.Context) {
 	}
 
 	// send the post request on this node id to /produce
-	addr := fmt.Sprintf("http://localhost:%d/produce", port)
+	addr := fmt.Sprintf("http://localhost:%d/message", port)
 	fmt.Println("addr is ", addr)
 
 	resp, err := http.Post(addr, "application/json", bytes.NewBuffer(jsonData))

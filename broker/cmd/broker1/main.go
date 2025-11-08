@@ -11,8 +11,8 @@ import (
 
 func main() {
 	r := gin.Default()
-	r.POST("/produce", handler.Produce)
-	r.POST("/message",handler.WriteMessage)
+	r.POST("/produce", brokerHandler.Produce)
+	r.POST("/message",brokerHandler.WriteMessage)
 	fmt.Println("starting the broker1 server on 8081")
 	r.Run(":8081")
 }
