@@ -17,9 +17,26 @@ func main() {
 	r.Run(":8082")
 }
 
+type replicateReq struct {
+	TopicName string `json:"topicname" binding:"required"`
+	Key       string `json:"key" binding:"required"`
+	Message   string `json:"message" binding:"required"`
+}
+
 func replicate(c *gin.Context) {
+	var req replicateReq 
+	if err := c.BindJSON(req);err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+
+	fmt.Println("req is",req)
 	c.JSON(http.StatusOK,gin.H{
-		"message" : "hello from replicate",
+		"status" : "success",
+
 	})
 }
 

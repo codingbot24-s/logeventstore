@@ -407,7 +407,7 @@ func FindLeaderPort(brokerSlice []*Broker, topic, partition string) (int, error)
 
 // we can use this to get the broker slice*
 func GetBrokerSlice() (*BrokerSliceType, error) {
-	// if brokerslice is nill then we dont need to return any thing but nil 
+	// if brokerslice is nill then we return the error 
 	if len(BrokerSlice) == 0 {
 		return nil,fmt.Errorf("error slice is empty create the broker first")
 	}

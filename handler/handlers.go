@@ -67,6 +67,7 @@ func RouteProduce(c *gin.Context) {
 
 	}
 	brokerSlice, err := helper.GetBrokerSlice()
+	fmt.Println("in produce Broker slice is ",brokerSlice)	
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error":   "error getting broker slice",
