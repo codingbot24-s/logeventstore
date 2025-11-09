@@ -61,7 +61,7 @@ func WriteMessage(c *gin.Context) {
 		})
 		return
 	}
-
+	// find the topin the map 
 	topic, ok := topicMap[req.TopicName]
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -70,7 +70,7 @@ func WriteMessage(c *gin.Context) {
 		})
 		return
 	}
-	// write the message to the partition
+	// write the message to the topic partition
 	if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to write message",
@@ -78,7 +78,13 @@ func WriteMessage(c *gin.Context) {
 		})
 		return
 	}
-
+	//TODO: after wiriting into the log file we need to read cluster metadata to find the replicas for that partition 
+	// we can spawn the goroutines that will read the file and then pass the data throw channel 
+	go func () {
+		// it will return the byte 
+		//b,err := helper.ReadClusterMetadataAndGetTheClusterMetadataData("./broker/cluster_meta.json")
+		// if err != nil {}
+	}()  
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
 		"message": "Message written successfully",
