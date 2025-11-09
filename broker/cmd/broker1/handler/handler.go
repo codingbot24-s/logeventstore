@@ -1,4 +1,4 @@
-package brokerHandler
+package brokerHandler1
 
 import (
 	"bytes"
@@ -43,7 +43,8 @@ func Produce(c *gin.Context) {
 	topicMap[req.TopicName] = topic
 	// build the ring with the number of nodes
 	topic.BuildRing(req.NumberofNodes)
-
+	// here we need to send the request to the other brokers to register to create this topic and partitions there 
+	// TODO:
 	c.JSON(http.StatusOK, gin.H{
 		"status":  "success",
 		"message": "Topic created successfully",
