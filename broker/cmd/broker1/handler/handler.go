@@ -149,7 +149,7 @@ func WriteMessage(c *gin.Context) {
 	var replicationErrs []string
 
 	for i := 0; i < len(replicas); i++ {
-		if replicas[i] == bs[i].NodeID {
+		if replicas[i] == pmeta.LeaderID {
 			continue
 		}	
 		addr := fmt.Sprintf("http://localhost:%d/replicate",bs[i].Port)
