@@ -97,7 +97,7 @@ func WriteMessage(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "message": "failed to load cluster metadata", "error": err.Error()})
 		return
 	}
-	// topic map pointer that hold topics in the map 
+	// topic map pointer that hold topics in the map
 	topics := *topicsMapPtr
 	partitionMap, exist := topics[req.TopicName]
 	if !exist {
@@ -113,39 +113,48 @@ func WriteMessage(c *gin.Context) {
 	}
 
 	replicas := pmeta.Replicas
-	// get the broker slice*
-	brokerSlicePtr, err := helper.GetBrokerSlice()
+	// get the broker slice from the controller
+	resp, err := http.Get("http://localhost:8080/getbrokers")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "message": "error getting broker slice", "error": err.Error()})
 		return
 	}
-	bs := *brokerSlicePtr
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "message": "controller returned non-200 status", "statusCode": resp.StatusCode})
+		return
+	}
+
+	var bs []*helper.Broker
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&bs); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "message": "error decoding broker slice", "error": err.Error()})
+		return
+	}
+
+	if len(bs) == 0 {
+		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "message": "no brokers found in response"})
+		return
+	}
+
 	// marshall the request data
 	jsonData, err := json.Marshal(req)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "message": "error marshalling json", "error": err.Error()})
 		return
 	}
-	// ?
+
 	client := &http.Client{Timeout: 5 * time.Second}
 	var replicationErrs []string
 
-	
-	for _, replicaID := range replicas {
-		var target *helper.Broker
-		for _, b := range bs {
-			if b.NodeID == replicaID {
-				target = b
-				break
-			}
-		}
-		if target == nil {
-			replicationErrs = append(replicationErrs, fmt.Sprintf("broker for replica %d not found", replicaID))
+	for i := 0; i < len(replicas); i++ {
+		if replicas[i] == bs[i].NodeID {
 			continue
-		}
-
-		addr := fmt.Sprintf("http://localhost:%d/replicate", target.Port)
+		}	
+		addr := fmt.Sprintf("http://localhost:%d/replicate",bs[i].Port)
 		resp, err := client.Post(addr, "application/json", bytes.NewBuffer(jsonData))
+		// TODO: is this continue is correct
 		if err != nil {
 			replicationErrs = append(replicationErrs, fmt.Sprintf("post to %s failed: %v", addr, err))
 			continue
@@ -159,10 +168,10 @@ func WriteMessage(c *gin.Context) {
 		}
 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-			replicationErrs = append(replicationErrs, fmt.Sprintf("replica %d returned status %d: %s", replicaID, resp.StatusCode, string(body)))
-			continue
+			replicationErrs = append(replicationErrs, fmt.Sprintf("replica %d returned status %d: %s", replicas[i], resp.StatusCode, string(body)))
+			continue	
 		}
-	}
+	}	
 
 	if len(replicationErrs) > 0 {
 		c.JSON(http.StatusInternalServerError, gin.H{

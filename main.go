@@ -17,8 +17,8 @@ func main() {
 	r.GET("/consume", handlers.Consume)
 	// will create a partition in a topic
 	r.POST("/createpartition", handlers.CreatePartitionInTopic)
-	//  replicate
-	r.POST("/replicate", handlers.Replicate)
+	// get the brokers
+	r.GET("/getbrokers", handlers.GetBrokers)
 	fmt.Println("server started on :8080")
 	r.Run()
 }

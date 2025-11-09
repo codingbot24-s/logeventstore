@@ -50,10 +50,9 @@ func RouteProduce(c *gin.Context) {
 		})
 		return
 	}
-	// TODO: we need this port to be dynamic by leader we need to get the leader from brokers slice
-	// we can create the broker slice here if
+	// TODO: here we are reading the broker config and creating the broker main controller knows about the broekers because of config and has access to broker slice but brokers doesnt have access to broker slice because they are diffrent proccess so we need to do something about this for replication leader need to know about other broker we can define the handler for getting the broker slice 
 
-	for i := 1; i < 2; i++ {
+	for i := 1; i < 3; i++ {
 		confFile := fmt.Sprintf("./broker/cmd/broker%d/broker%d.json", i, i)
 		_, err := helper.CreateBroker(confFile, "./broker/cluster_meta.json")
 
@@ -311,25 +310,21 @@ func CreatePartitionInTopic(c *gin.Context) {
 
 }
 
-type Replication struct {
-	TopicName string `json:"topicname" binding:"required"`
-	Partition int    `json:"partition" binding:"required"`
-	Offset    int    `json:"offset" binding:"required"`
-	Message   string `json:"message" binding:"required"`
-}
-
-func Replicate(c *gin.Context) {
-	var req Replication
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
+func GetBrokers(c *gin.Context) {
+	brokers, err := helper.GetBrokerSlice()
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error": err.Error(),
 		})
 		return
 	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"status":  "success",
-		"message": "message replicated successfully",
-	})
+	
+	if brokers == nil {
+		c.JSON(http.StatusNotFound, gin.H{
+			"error": "No brokers found",
+		})
+		return
+	}
+	
+	c.JSON(http.StatusOK, *brokers)
 }

@@ -24,16 +24,14 @@ type replicateReq struct {
 }
 
 func replicate(c *gin.Context) {
-	var req replicateReq 
-	if err := c.BindJSON(req);err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
-		})
-		return
-	}
-
-	fmt.Println("req is",req)
+	// var req replicateReq 
+	// if err := c.BindJSON(req);err != nil {
+	// 	c.JSON(http.StatusBadRequest, gin.H{
+	// 		"error":   "Invalid request format",
+	// 		"details": err.Error(),
+	// 	})
+	// 	return
+	// }
 	c.JSON(http.StatusOK,gin.H{
 		"status" : "success",
 
