@@ -1,7 +1,6 @@
 package brokerHandler2
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/codingbot24-s/helper"
@@ -63,8 +62,30 @@ func Replicate(c *gin.Context) {
 		return
 	}
 	// TODO: ADD the write logic here
-	fmt.Println("recived request ", req)
+
+	// find the topin the map
+	topic, ok := topicMap[req.TopicName]
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid topic name",
+			"details": "Topic does not exist",
+		})
+		return
+	}
+	// write the message to the topic partition
+	if err := topic.WriteIntoPartition(req.Key, req.Message); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to write message",
+			"details": err.Error(),
+		})
+		return
+	}
+
+
 	c.JSON(http.StatusOK, gin.H{
-		"status": "success",
-	})
+		"status":  "success",
+		"message": "Message written successfully",
+		"topic":   req.TopicName,
+		"key":     req.Key,
+	})	
 }
