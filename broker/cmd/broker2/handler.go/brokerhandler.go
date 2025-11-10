@@ -62,6 +62,7 @@ func Replicate(c *gin.Context) {
 		})
 		return
 	}
+	// TODO: ADD the write logic here
 	fmt.Println("recived request ", req)
 	c.JSON(http.StatusOK, gin.H{
 		"status": "success",
