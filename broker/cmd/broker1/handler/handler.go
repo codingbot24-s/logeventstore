@@ -44,8 +44,7 @@ func Produce(c *gin.Context) {
 	// build the ring with the number of nodes
 	topic.BuildRing(req.NumberofNodes)
 	// TODO:
-	// here we need to send the request to the other brokers to register to create this topic and partitions there 
-
+	// here we need to send the request to the other brokers to register to create this topic and partitions there
 
 	// Read cluster metadata
 	b, err := helper.ReadClusterMetadataAndGetTheClusterMetadataData("../../cluster_meta.json")
@@ -113,8 +112,8 @@ func Produce(c *gin.Context) {
 	for i := 0; i < len(replicas); i++ {
 		if replicas[i] == pmeta.LeaderID {
 			continue
-		}	
-		addr := fmt.Sprintf("http://localhost:%d/produce",bs[i].Port)
+		}
+		addr := fmt.Sprintf("http://localhost:%d/produce", bs[i].Port)
 		resp, err := client.Post(addr, "application/json", bytes.NewBuffer(jsonData))
 		// TODO: is this continue is correct
 		if err != nil {
@@ -125,16 +124,15 @@ func Produce(c *gin.Context) {
 		body, err := io.ReadAll(resp.Body)
 		resp.Body.Close()
 		if err != nil {
-			producerErrs= append(producerErrs, fmt.Sprintf("reading response from %s failed: %v", addr, err))
+			producerErrs = append(producerErrs, fmt.Sprintf("reading response from %s failed: %v", addr, err))
 			continue
 		}
 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			producerErrs = append(producerErrs, fmt.Sprintf("replica %d returned status %d: %s", replicas[i], resp.StatusCode, string(body)))
-			continue	
+			continue
 		}
 	}
-
 
 	if len(producerErrs) > 0 {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -253,8 +251,8 @@ func WriteMessage(c *gin.Context) {
 	for i := 0; i < len(replicas); i++ {
 		if replicas[i] == pmeta.LeaderID {
 			continue
-		}	
-		addr := fmt.Sprintf("http://localhost:%d/replicate",bs[i].Port)
+		}
+		addr := fmt.Sprintf("http://localhost:%d/replicate", bs[i].Port)
 		resp, err := client.Post(addr, "application/json", bytes.NewBuffer(jsonData))
 		// TODO: is this continue is correct
 		if err != nil {
@@ -271,9 +269,9 @@ func WriteMessage(c *gin.Context) {
 
 		if resp.StatusCode < 200 || resp.StatusCode >= 300 {
 			replicationErrs = append(replicationErrs, fmt.Sprintf("replica %d returned status %d: %s", replicas[i], resp.StatusCode, string(body)))
-			continue	
+			continue
 		}
-	}	
+	}
 
 	if len(replicationErrs) > 0 {
 		c.JSON(http.StatusInternalServerError, gin.H{
@@ -293,4 +291,29 @@ func WriteMessage(c *gin.Context) {
 		"key":     req.Key,
 	})
 
+}
+
+type syncReq struct {
+	TopicName string `json:"topicname" binding:"required"`
+	Offset    int    `json:"offset" binding:"required"`
+}
+
+func Sync(c *gin.Context) {
+	var req syncReq
+	if err := c.BindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid request format",
+			"details": err.Error(),
+		})
+		return
+	}
+	// find the topic the map
+	_, ok := topicMap[req.TopicName]
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid topic name",
+			"details": "Topic does not exist",
+		})
+		return
+	}
 }

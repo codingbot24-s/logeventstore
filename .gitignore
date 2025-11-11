@@ -1,3 +1,4 @@
 log.txt
 broker1.json
 broker/cmd/broker2/broker2.json
+broker/cmd/broker2/test_topic-partition-0.log
