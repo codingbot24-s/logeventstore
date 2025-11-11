@@ -10,13 +10,11 @@ import (
 )
 
 // When a follower restarts, it should:
-// 1. Read its local log file to find the latest offset (last message index)
+// 1. Read its local log file to find the latest offset (last message index) // DONE
 // 2. Call the leader’s /sync endpoint with that offset
 // 3. The leader should respond with all messages after that offset
 // 4. The follower then appends those to its local log.
 // we can to this on another goroutine
-
-//1.1 TODO: can we find the file pointer when we start the follower beacause topicMap is in memory so how can we read the log files??
 
 func StartReadingLogFiles(topicName string) error {
 	metadata, err := helper.ReadClusterMetadataAndGetTheClusterMetadataData("../../cluster_meta.json")
@@ -34,7 +32,7 @@ func StartReadingLogFiles(topicName string) error {
 	if !ok {
 		return fmt.Errorf("topic %s not found", topicName)
 	}
-
+	// every partition
 	files := make([]string, 0)
 	for k := range partitions {
 		partName := fmt.Sprintf("%s-partition-%s.log", topicName, k)
@@ -80,3 +78,38 @@ func getOffset(filename string, offsetch chan int64, wg *sync.WaitGroup) error {
 
 	return nil
 }
+
+// // after we get the offset send a get req to /sync
+// func SyncWithLeader(offset int64) error {
+// 	// how to find the leader port on follower
+// 	// we can fetch the broker slice and findout the leader
+// 	// one more http call
+
+// 	// get the broker slice
+// 	resp, err := http.Get("http://localhost:8080/getbrokers")
+// 	if err != nil {
+// 		return fmt.Errorf("error sending request %w", err.Error())
+// 	}
+// 	defer resp.Body.Close()
+
+// 	if resp.StatusCode != http.StatusOK {
+// 		return fmt.Errorf("something went wrong %w", err.Error())
+// 	}
+
+// 	var bs []*helper.Broker
+// 	decoder := json.NewDecoder(resp.Body)
+// 	if err := decoder.Decode(&bs); err != nil {
+// 		return fmt.Errorf("error decoding json %w", err.Error())
+// 	}
+
+// 	if len(bs) == 0 {
+// 		return fmt.Errorf("erorr no broker found in slice")
+// 	}
+// 	// we can get the leader id from cluster metadata
+// 	leaderPort,err := helper.FindLeaderPort(bs,topic,partition)
+// 	if err != nil {
+// 		return fmt.Errorf("error getting leader",err.Error())
+// 	}
+// 	// send the request on this leader port on /sync with offset
+// 	return nil
+// }

@@ -61,7 +61,6 @@ func Replicate(c *gin.Context) {
 		})
 		return
 	}
-	// TODO: ADD the write logic here
 
 	// find the topin the map
 	topic, ok := topicMap[req.TopicName]

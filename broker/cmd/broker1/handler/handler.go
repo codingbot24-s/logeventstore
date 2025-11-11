@@ -74,7 +74,7 @@ func Produce(c *gin.Context) {
 	}
 
 	replicas := pmeta.Replicas
-	// get the broker slice from the controller
+	// get the broker slice from the controller it will run on 8080
 	resp, err := http.Get("http://localhost:8080/getbrokers")
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"status": "failed", "message": "error getting broker slice", "error": err.Error()})

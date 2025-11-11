@@ -388,7 +388,7 @@ func (b *Broker) GetLeaderInfo(topic, partition string) (*LeaderInfo, error) {
 
 	return info, nil
 }
-
+// GET THE LEADER FROM BROKER SLICE
 func FindLeaderPort(brokerSlice []*Broker, topic, partition string) (int, error) {
 	for _, b := range brokerSlice {
 		leaderInfo, err := b.GetLeaderInfo(topic, partition)
