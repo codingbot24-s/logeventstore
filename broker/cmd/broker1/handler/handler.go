@@ -297,28 +297,6 @@ type syncReq struct {
 	TopicName string `json:"topicname" binding:"required"`
 	Offset    int    `json:"offset" binding:"required"`
 }
-
-func Sync(c *gin.Context) {
-	var req syncReq
-	if err := c.BindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid request format",
-			"details": err.Error(),
-		})
-		return
-	}
-	// find the topic the map
-	_, ok := topicMap[req.TopicName]
-	if !ok {
-		c.JSON(http.StatusBadRequest, gin.H{
-			"error":   "Invalid topic name",
-			"details": "Topic does not exist",
-		})
-		return
-	}
-}
-
-
 func SyncLeader (c* gin.Context) {
 	c.JSON(http.StatusOK,gin.H {
 		"status": "success",

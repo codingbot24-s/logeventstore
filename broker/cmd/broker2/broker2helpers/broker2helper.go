@@ -54,8 +54,6 @@ func StartReadingLogFiles(topicName string) error {
 		wg.Wait()
 		close(offsetch)
 	}()
-	// partition number
-
 	urlch := make(chan string)
 	part := 0
 	for offset := range offsetch {
@@ -76,10 +74,27 @@ func StartReadingLogFiles(topicName string) error {
 		close(urlch)
 	}()
 
+	respch := make(chan string)
+	for url := range urlch {
+		fmt.Printf("url is %s\n", url)
+		wg.Add(1)
+		u := url
+		go func(target string) {
+			if err := SendRequest(target, respch, &wg); err != nil {
+				fmt.Printf("SendRequest(url=%s) error: %v\n", target, err)
+			}
+		}(u)
+	}
 
+	go func() {
+		wg.Wait()
+		close(respch)
+	}()
 
-	
-
+	// print the response
+	for resp := range respch {
+		fmt.Printf("response is %s\n", resp)
+	}
 	return nil
 }
 
@@ -116,7 +131,6 @@ func SyncWithLeader(offset int64, topic string, partition int, respch chan strin
 		return fmt.Errorf("error sending request %w", err)
 	}
 	defer resp.Body.Close()
-
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("something went wrong %w", err)
 	}
@@ -152,9 +166,11 @@ func SyncWithLeader(offset int64, topic string, partition int, respch chan strin
 	return nil
 }
 
-func SendRequest(url string, wg *sync.WaitGroup) error {
-	resp, err := http.Get(url)
+func SendRequest(url string, respch chan string, wg *sync.WaitGroup) error {
+	// ensure wg.Done is called exactly once for this goroutine
 	defer wg.Done()
+
+	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("error sending request %w", err)
 	}
@@ -163,11 +179,13 @@ func SendRequest(url string, wg *sync.WaitGroup) error {
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("something went wrong %w", err)
 	}
+
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("error reading response %w", err)
 	}
-	fmt.Printf("respone is %s\n", string(body))
+
+	respch <- string(body)
 
 	return nil
 }
