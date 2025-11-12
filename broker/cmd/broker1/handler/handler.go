@@ -294,24 +294,27 @@ func WriteMessage(c *gin.Context) {
 }
 
 type syncReq struct {
-	Offset    int    `json:"offset" binding:"required"`
-	Topicname string `json:"topicname" binding:"required"`
-	Partition string `json:"partition" binding:"required"`
+	Offset    int    `form:"offset" binding:"required"`
+	Topicname string `form:"topic" binding:"required"`
+	Partition string `form:"partition" binding:"required"`
 }
 
-// TODO: TEST THIS  
+// TODO: TEST THIS
 func SyncLeader(c *gin.Context) {
 
 	var req syncReq
-	if err := c.ShouldBindQuery(req); err != nil {
-		c.JSON(http.StatusBadRequest,gin.H{
-			"success" : "false",
-			"error"  : "error binding request body",
+	if err := c.ShouldBindQuery(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"success": "false",
+			"error":   "error binding request query",
+			"details": err.Error(),
 		})
+		return
 	}
 	// TODO: test this
 	// leader should response by all the messages after that offset in that partition
-
+	// TODO: remove this
+	
 	t, ok := topicMap[req.Topicname]
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -321,8 +324,8 @@ func SyncLeader(c *gin.Context) {
 		return
 	}
 	// the follower dosnt have the the access the key so we need to use diffrent function for it
-	filename := fmt.Sprintf("%s-partition-%s.log",req.Topicname,req.Partition)
-	str, err := t.ReadLogFile(filename,req.Offset)
+	filename := fmt.Sprintf("%s-partition-%s.log", req.Topicname, req.Partition)
+	str, err := t.ReadLogFile(filename, req.Offset)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{
 			"error":   "Failed to read from log file",
@@ -331,7 +334,7 @@ func SyncLeader(c *gin.Context) {
 		return
 	}
 	// How can we send the string
-	fmt.Printf("string is %s",str)
+	fmt.Printf("string is %s", str)
 	c.JSON(http.StatusOK, gin.H{
 		"status":   "success",
 		"messages": str,

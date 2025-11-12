@@ -169,22 +169,18 @@ func SyncWithLeader(offset int64, topic string, partition int, respch chan strin
 func SendRequest(url string, respch chan string, wg *sync.WaitGroup) error {
 	// ensure wg.Done is called exactly once for this goroutine
 	defer wg.Done()
-
+	fmt.Println("sending request")
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("error sending request %w", err)
 	}
+	fmt.Println("request sended")
 	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("something went wrong %w", err)
-	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("error reading response %w", err)
 	}
-
 	respch <- string(body)
 
 	return nil

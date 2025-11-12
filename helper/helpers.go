@@ -48,13 +48,13 @@ type Node struct {
 	PartitionIndex int
 }
 type Topic struct {
-	partitions []*LogFile
+	Partitions []*LogFile
 	Ring       []Node
 }
 
 // building ring with Nvnode append it to the ring with hash
 func (t *Topic) BuildRing(vNode int) {
-	for p := 0; p < len(t.partitions); p++ {
+	for p := 0; p < len(t.Partitions); p++ {
 		for v := 0; v < vNode; v++ {
 			str := fmt.Sprintf("partition-%d-node-%d", p, v)
 			hashVal := crc32.ChecksumIEEE([]byte(str))
@@ -89,7 +89,7 @@ func NewTopic(name string, numPartitions int) (*Topic, error) {
 	}
 
 	return &Topic{
-		partitions: partitions,
+		Partitions: partitions,
 	}, nil
 }
 
@@ -100,7 +100,7 @@ func (t *Topic) WriteIntoPartition(key string, message string) error {
 		return err
 	}
 
-	err = t.partitions[part].WriteIntoLogFile(message)
+	err = t.Partitions[part].WriteIntoLogFile(message)
 	if err != nil {
 		return err
 	}
@@ -115,16 +115,16 @@ func (t *Topic) ReadFromPartiton(key string, offset int) (string, error) {
 		return "error in getting partition", err
 	}
 
-	return t.partitions[part].ReadFileFromOffset(offset)
+	return t.Partitions[part].ReadFileFromOffset(offset)
 }
 
 func (t *Topic) GetAllPartitions() *[]*LogFile {
-	return &t.partitions
+	return &t.Partitions
 }
 
 func (t *Topic) CloseP() error {
 	var Eerr error
-	for _, p := range t.partitions {
+	for _, p := range t.Partitions {
 		if err := p.Close(); err != nil {
 			Eerr = err
 		}
