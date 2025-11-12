@@ -294,12 +294,46 @@ func WriteMessage(c *gin.Context) {
 }
 
 type syncReq struct {
-	TopicName string `json:"topicname" binding:"required"`
 	Offset    int    `json:"offset" binding:"required"`
+	Topicname string `json:"topicname" binding:"required"`
+	Partition string `json:"partition" binding:"required"`
 }
-func SyncLeader (c* gin.Context) {
-	c.JSON(http.StatusOK,gin.H {
-		"status": "success",
-		"request ": "Received",
+
+// TODO: TEST THIS  
+func SyncLeader(c *gin.Context) {
+
+	var req syncReq
+	if err := c.ShouldBindQuery(req); err != nil {
+		c.JSON(http.StatusBadRequest,gin.H{
+			"success" : "false",
+			"error"  : "error binding request body",
+		})
+	}
+	// TODO: test this
+	// leader should response by all the messages after that offset in that partition
+
+	t, ok := topicMap[req.Topicname]
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error":   "Invalid topic name",
+			"details": "Topic does not exist",
+		})
+		return
+	}
+	// the follower dosnt have the the access the key so we need to use diffrent function for it
+	filename := fmt.Sprintf("%s-partition-%s.log",req.Topicname,req.Partition)
+	str, err := t.ReadLogFile(filename,req.Offset)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{
+			"error":   "Failed to read from log file",
+			"details": err.Error(),
+		})
+		return
+	}
+	// How can we send the string
+	fmt.Printf("string is %s",str)
+	c.JSON(http.StatusOK, gin.H{
+		"status":   "success",
+		"messages": str,
 	})
 }

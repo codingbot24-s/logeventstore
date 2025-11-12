@@ -223,6 +223,26 @@ func (t *Topic) GetPartitionForWrite(key string) (int, error) {
 	return t.Ring[0].PartitionIndex, nil
 }
 
+func(t* Topic) ReadLogFile(filename string,offset int) (string, error) {
+	if filename == "" {
+		return "", fmt.Errorf("no filename found")
+	}
+	f,err := os.OpenFile(filename, os.O_APPEND|os.O_RDWR, 0644)
+	if err != nil {
+		return "", fmt.Errorf("no filename found %w",err)
+	}
+	// reading file from start we need to read it from the offset
+	_, _ = f.Seek(int64(offset), io.SeekStart)
+	buf := make([]byte, 1024)
+	n, err := f.Read(buf)
+	if err != nil && err != io.EOF {
+		log.Println("Error from reading in offset", err.Error())
+		return "", fmt.Errorf("failed to read from log file: %w", err)
+	}
+	return string(buf[:n]), nil
+}
+
+
 // close one log file
 func (l *LogFile) Close() error {
 	if l.file != nil {
