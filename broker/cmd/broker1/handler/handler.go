@@ -317,3 +317,11 @@ func Sync(c *gin.Context) {
 		return
 	}
 }
+
+
+func SyncLeader (c* gin.Context) {
+	c.JSON(http.StatusOK,gin.H {
+		"status": "success",
+		"request ": "Received",
+	})
+}

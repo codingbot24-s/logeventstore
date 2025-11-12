@@ -14,7 +14,7 @@ import (
 func main() {
 	err := broker2Helper.StartReadingLogFiles("test_topic")
 	if err != nil {
-		log.Fatalf("error cant read the log file%w",err.Error())
+		log.Fatalf("error cant read the log file%w",err)
 	}				
 	r := gin.Default()
 	r.POST("/replicate", brokerHandler2.Replicate)

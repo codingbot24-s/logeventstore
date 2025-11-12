@@ -19,8 +19,6 @@ import (
 // 4. The follower then appends those to its local log.
 // we can to this on another goroutine
 
-type resp struct{}
-
 func StartReadingLogFiles(topicName string) error {
 	metadata, err := helper.ReadClusterMetadataAndGetTheClusterMetadataData("../../cluster_meta.json")
 
@@ -58,12 +56,29 @@ func StartReadingLogFiles(topicName string) error {
 	}()
 	// partition number
 
-	respch := make(chan resp)
+	urlch := make(chan string)
 	part := 0
 	for offset := range offsetch {
-		go SyncWithLeader(offset, topicName, part,respch)
+		fmt.Printf("offset is %d\n", offset)
+		wg.Add(1)
+		p := part
+		off := offset
+		go func(offsetVal int64, partition int) {
+			if err := SyncWithLeader(offsetVal, topicName, partition, urlch, &wg); err != nil {
+				fmt.Printf("SyncWithLeader(part=%d) error: %v\n", partition, err)
+			}
+		}(off, p)
 		part = part + 1
 	}
+
+	go func() {
+		wg.Wait()
+		close(urlch)
+	}()
+
+
+
+	
 
 	return nil
 }
@@ -89,7 +104,8 @@ func getOffset(filename string, offsetch chan int64, wg *sync.WaitGroup) error {
 }
 
 // after we get the offset send a get req to /sync
-func SyncWithLeader(offset int64, topic string, partition int, respch chan resp) error {
+func SyncWithLeader(offset int64, topic string, partition int, respch chan string, wg *sync.WaitGroup) error {
+	defer wg.Done()
 	// how to find the leader port on follower
 	// we can fetch the broker slice and findout the leader
 	// one more http call
@@ -112,18 +128,46 @@ func SyncWithLeader(offset int64, topic string, partition int, respch chan resp)
 	}
 
 	if len(bs) == 0 {
-		return fmt.Errorf("erorr no broker found in slice")
+		return fmt.Errorf("erorr no broker found in slice %w", err)
 	}
 	// we can get the leader id from cluster metadata
-	strPart := fmt.Sprintf("%d",partition)
-	leaderPort, err := helper.FindLeaderPort(bs, topic,strPart)
+	strPart := fmt.Sprintf("%d", partition)
+	strOffset := fmt.Sprintf("%d", offset)
+	leaderPort, err := helper.FindLeaderPort(bs, topic, strPart)
 	if err != nil {
 		return fmt.Errorf("error getting leader %w", err)
 	}
 	// send the request on this leader port on /sync with offset
 	baseUrl := fmt.Sprintf("http://localhost:%d/sync", leaderPort)
+	base, err := url.Parse(baseUrl)
+	if err != nil {
+		return fmt.Errorf("error parsing url %w", err)
+	}
 	queryParams := url.Values{}
-	queryParams.Add(baseUrl, "")
-	// create a url
+	queryParams.Add("topic", topic)
+	queryParams.Add("partition", strPart)
+	queryParams.Add("offset", strOffset)
+	base.RawQuery = queryParams.Encode()
+	respch <- base.String()
+	return nil
+}
+
+func SendRequest(url string, wg *sync.WaitGroup) error {
+	resp, err := http.Get(url)
+	defer wg.Done()
+	if err != nil {
+		return fmt.Errorf("error sending request %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("something went wrong %w", err)
+	}
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("error reading response %w", err)
+	}
+	fmt.Printf("respone is %s\n", string(body))
+
 	return nil
 }
