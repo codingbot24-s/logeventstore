@@ -1,8 +1,11 @@
 package broker2Helper
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
+	"net/http"
+	"net/url"
 	"os"
 	"sync"
 
@@ -15,6 +18,8 @@ import (
 // 3. The leader should respond with all messages after that offset
 // 4. The follower then appends those to its local log.
 // we can to this on another goroutine
+
+type resp struct{}
 
 func StartReadingLogFiles(topicName string) error {
 	metadata, err := helper.ReadClusterMetadataAndGetTheClusterMetadataData("../../cluster_meta.json")
@@ -51,9 +56,13 @@ func StartReadingLogFiles(topicName string) error {
 		wg.Wait()
 		close(offsetch)
 	}()
+	// partition number
 
+	respch := make(chan resp)
+	part := 0
 	for offset := range offsetch {
-		fmt.Printf("offset is %d", offset)
+		go SyncWithLeader(offset, topicName, part,respch)
+		part = part + 1
 	}
 
 	return nil
@@ -79,37 +88,42 @@ func getOffset(filename string, offsetch chan int64, wg *sync.WaitGroup) error {
 	return nil
 }
 
-// // after we get the offset send a get req to /sync
-// func SyncWithLeader(offset int64) error {
-// 	// how to find the leader port on follower
-// 	// we can fetch the broker slice and findout the leader
-// 	// one more http call
+// after we get the offset send a get req to /sync
+func SyncWithLeader(offset int64, topic string, partition int, respch chan resp) error {
+	// how to find the leader port on follower
+	// we can fetch the broker slice and findout the leader
+	// one more http call
 
-// 	// get the broker slice
-// 	resp, err := http.Get("http://localhost:8080/getbrokers")
-// 	if err != nil {
-// 		return fmt.Errorf("error sending request %w", err.Error())
-// 	}
-// 	defer resp.Body.Close()
+	// get the broker slice
+	resp, err := http.Get("http://localhost:8080/getbrokers")
+	if err != nil {
+		return fmt.Errorf("error sending request %w", err)
+	}
+	defer resp.Body.Close()
 
-// 	if resp.StatusCode != http.StatusOK {
-// 		return fmt.Errorf("something went wrong %w", err.Error())
-// 	}
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("something went wrong %w", err)
+	}
 
-// 	var bs []*helper.Broker
-// 	decoder := json.NewDecoder(resp.Body)
-// 	if err := decoder.Decode(&bs); err != nil {
-// 		return fmt.Errorf("error decoding json %w", err.Error())
-// 	}
+	var bs []*helper.Broker
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(&bs); err != nil {
+		return fmt.Errorf("error decoding json %s", err)
+	}
 
-// 	if len(bs) == 0 {
-// 		return fmt.Errorf("erorr no broker found in slice")
-// 	}
-// 	// we can get the leader id from cluster metadata
-// 	leaderPort,err := helper.FindLeaderPort(bs,topic,partition)
-// 	if err != nil {
-// 		return fmt.Errorf("error getting leader",err.Error())
-// 	}
-// 	// send the request on this leader port on /sync with offset
-// 	return nil
-// }
+	if len(bs) == 0 {
+		return fmt.Errorf("erorr no broker found in slice")
+	}
+	// we can get the leader id from cluster metadata
+	strPart := fmt.Sprintf("%d",partition)
+	leaderPort, err := helper.FindLeaderPort(bs, topic,strPart)
+	if err != nil {
+		return fmt.Errorf("error getting leader %w", err)
+	}
+	// send the request on this leader port on /sync with offset
+	baseUrl := fmt.Sprintf("http://localhost:%d/sync", leaderPort)
+	queryParams := url.Values{}
+	queryParams.Add(baseUrl, "")
+	// create a url
+	return nil
+}
