@@ -1,12 +1,14 @@
 package broker2Helper
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/codingbot24-s/helper"
@@ -18,6 +20,13 @@ import (
 // 3. The leader should respond with all messages after that offset
 // 4. The follower then appends those to its local log.
 // we can to this on another goroutine
+
+type ResposneStruct struct {
+	Status    string `json:"status" binding:"required"`
+	Topic     string `json:"topic" binding:"required"`
+	Partition string 	`json:"partition" binding:"required"`
+	Messages  []string `json:"messages" binding:"required"`
+}
 
 func StartReadingLogFiles(topicName string) error {
 	metadata, err := helper.ReadClusterMetadataAndGetTheClusterMetadataData("../../cluster_meta.json")
@@ -45,6 +54,7 @@ func StartReadingLogFiles(topicName string) error {
 	var wg sync.WaitGroup
 
 	offsetch := make(chan int64)
+	// get the offset for every files
 	for _, f := range files {
 		wg.Add(1)
 		go getOffset(f, offsetch, &wg)
@@ -56,6 +66,7 @@ func StartReadingLogFiles(topicName string) error {
 	}()
 	urlch := make(chan string)
 	part := 0
+	// for every offset get the url
 	for offset := range offsetch {
 		fmt.Printf("offset is %d\n", offset)
 		wg.Add(1)
@@ -74,9 +85,9 @@ func StartReadingLogFiles(topicName string) error {
 		close(urlch)
 	}()
 
-	respch := make(chan string)
+	respch := make(chan ResposneStruct)
+	// send the request to every url
 	for url := range urlch {
-		fmt.Printf("url is %s\n", url)
 		wg.Add(1)
 		u := url
 		go func(target string) {
@@ -91,10 +102,20 @@ func StartReadingLogFiles(topicName string) error {
 		close(respch)
 	}()
 
-	// print the response
+	// write the response in log file
 	for resp := range respch {
-		fmt.Printf("response is %s\n", resp)
+		wg.Add(1)
+		r := resp
+		go func(rr ResposneStruct) {
+			if err := WriteResponse(rr.Topic, rr.Partition, rr.Messages, &wg); err != nil {
+				fmt.Printf("error in writing response: %v\n", err)
+			}
+		}(r)
 	}
+
+	
+	wg.Wait()
+
 	return nil
 }
 
@@ -166,22 +187,65 @@ func SyncWithLeader(offset int64, topic string, partition int, respch chan strin
 	return nil
 }
 
-func SendRequest(url string, respch chan string, wg *sync.WaitGroup) error {
+func SendRequest(url string, respch chan ResposneStruct, wg *sync.WaitGroup) error {
 	// ensure wg.Done is called exactly once for this goroutine
 	defer wg.Done()
-	fmt.Println("sending request")
+
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("error sending request %w", err)
 	}
-	fmt.Println("request sended")
 	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("something went wrong %w", err)
+	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("error reading response %w", err)
 	}
-	respch <- string(body)
+
+	var respReq ResposneStruct
+	if err := json.Unmarshal(body,&respReq); err != nil {
+		return fmt.Errorf("error unmarshalling json %w", err)
+	}
+	
+	respch <- respReq
+
+	return nil
+}
+func WriteResponse(topicName string, partition string, message []string, wg *sync.WaitGroup) error {
+	defer wg.Done()
+	for _, msg := range message {
+		fmt.Printf("message is %s\n", msg)
+	}
+	fileName := fmt.Sprintf("%s-partition-%s.log", topicName, partition)
+	fd, err := os.OpenFile(fileName, os.O_APPEND|os.O_RDWR|os.O_CREATE, 0644)
+	if err != nil {
+		return fmt.Errorf("error opening file %w", err)
+	}
+	defer fd.Close()
+
+	var buf bytes.Buffer
+	for _, msg := range message {
+		if msg == "" {
+			continue
+		}
+		buf.WriteString(msg)
+		// ensure each message is on its own line
+		if !strings.HasSuffix(msg, "\n") {
+			buf.WriteByte('\n')
+		}
+	}
+
+	if buf.Len() == 0 {
+		return nil
+	}
+
+	if _, err := fd.Write(buf.Bytes()); err != nil {
+		return fmt.Errorf("error writing to file %w", err)
+	}
 
 	return nil
 }

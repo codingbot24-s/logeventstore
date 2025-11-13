@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/codingbot24-s/helper"
@@ -300,6 +301,13 @@ type syncReq struct {
 }
 
 // TODO: TEST THIS
+type SyncResp struct {
+	Status string
+	Topic  string
+	Partition string
+	Messages []string
+}
+
 func SyncLeader(c *gin.Context) {
 
 	var req syncReq
@@ -314,7 +322,7 @@ func SyncLeader(c *gin.Context) {
 	// TODO: test this
 	// leader should response by all the messages after that offset in that partition
 	// TODO: remove this
-	
+
 	t, ok := topicMap[req.Topicname]
 	if !ok {
 		c.JSON(http.StatusBadRequest, gin.H{
@@ -333,10 +341,16 @@ func SyncLeader(c *gin.Context) {
 		})
 		return
 	}
-	// How can we send the string
-	fmt.Printf("string is %s", str)
-	c.JSON(http.StatusOK, gin.H{
-		"status":   "success",
-		"messages": str,
-	})
+
+	strArr := strings.Split(str, "\n")
+	sp := SyncResp{
+		Status: "success",
+		Topic: req.Topicname,
+		Partition: req.Partition,
+		Messages: strArr,
+	}
+	// i think the error is we havent started the leader after this  
+	// we are sending array
+	fmt.Printf("string is %s", sp)
+	c.JSON(http.StatusOK,sp)
 }
